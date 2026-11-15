@@ -1,0 +1,75 @@
+# Runs when a version tag like v1.2.0 is pushed:
+#   1. builds the firmware with that version
+#   2. creates a GitHub release with the binaries
+#   3. publishes the web flasher (GitHub Pages) with the new firmware
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write    # create the release
+  pages: write       # publish the web flasher
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: platformio-${{ hashFiles('platformio.ini') }}
+
+      - name: Install PlatformIO
+        run: pip install platformio==6.2.0
+
+      - name: Build firmware
+        env:
+          CLAWD_VERSION: ${{ github.ref_name }}
+        run: pio run
+
+      - name: Collect binaries
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          mkdir -p dist site
+          # Merged image (bootloader + partitions + app) for the web flasher and esptool
+          cp .pio/build/clawd/firmware.factory.bin "dist/clawd-desk-buddy-${version}-factory.bin"
+          # App image for updates through the web UI
+          cp .pio/build/clawd/firmware.bin "dist/clawd-desk-buddy-${version}-ota.bin"
+
+          # Web flasher: page, firmware and a manifest with the new version
+          cp flasher/index.html site/
+          cp .pio/build/clawd/firmware.factory.bin site/firmware.bin
+          python3 - "$version" <<'PY'
+          import json, sys
+          with open("flasher/manifest.json") as f:
+              manifest = json.load(f)
+          manifest["version"] = sys.argv[1]
+          with open("site/manifest.json", "w") as f:
+              json.dump(manifest, f, indent=2)
+          PY
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.bin
+          generate_release_notes: true
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - name: Publish web flasher
+        id: pages
+        uses: actions/deploy-pages@v4

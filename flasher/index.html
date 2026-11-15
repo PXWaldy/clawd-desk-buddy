@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Clawd Desk Buddy Web Flasher</title>
+<meta name="description" content="Flash the Clawd Desk Buddy firmware from your browser and set up WiFi right away.">
+<style>
+:root {
+  --bg: #141312; --card: #1f1d1b; --card-2: #2a2725; --line: #38342f;
+  --text: #f3efe9; --muted: #a39b91; --accent: #e8743b; --warn: #ffb224;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 17px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 680px; margin: 0 auto; padding: 40px 20px 64px; }
+.face { width: 160px; height: 86px; border-radius: 18px; background: #e05500; position: relative; margin-bottom: 28px; }
+.face i { position: absolute; top: 22px; width: 22px; height: 42px; background: #000; animation: blink 5s infinite; transform-origin: center 60%; }
+.face i:first-child { left: 32px; }
+.face i:last-child { right: 32px; }
+@keyframes blink { 0%, 46%, 50%, 100% { transform: scaleY(1); } 48% { transform: scaleY(.1); } }
+@media (prefers-reduced-motion: reduce) { .face i { animation: none; } }
+h1 { font-size: 34px; line-height: 1.15; margin: 0 0 10px; letter-spacing: -.02em; }
+.lead { color: var(--muted); margin: 0 0 28px; font-size: 19px; }
+section { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 22px; margin-bottom: 18px; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 12px; }
+p { margin: 0 0 12px; }
+p:last-child, ol:last-child { margin-bottom: 0; }
+ol { margin: 0; padding-left: 22px; }
+li { margin-bottom: 8px; }
+a { color: var(--accent); }
+.warn { border-color: var(--warn); }
+.warn h2 { color: var(--warn); }
+esp-web-install-button { display: block; margin-top: 6px; }
+button.install {
+  font: inherit; font-weight: 600; font-size: 19px; color: #1b0d05; background: var(--accent);
+  border: 0; border-radius: 16px; min-height: 60px; padding: 0 32px; cursor: pointer; width: 100%;
+}
+button.install:hover { filter: brightness(1.08); }
+button.install:focus-visible { outline: 3px solid var(--text); outline-offset: 3px; }
+.unsupported { color: var(--warn); }
+.version { color: var(--muted); font-size: 14px; margin-top: 12px; }
+footer { color: var(--muted); font-size: 14px; margin-top: 32px; }
+</style>
+<script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+</head>
+<body>
+<main>
+  <div class="face" aria-hidden="true"><i></i><i></i></div>
+  <h1>Clawd Desk Buddy</h1>
+  <p class="lead">Flash the firmware straight from your browser, then set up WiFi in the same window.</p>
+
+  <section class="warn">
+    <h2>Check your board first</h2>
+    <p>This firmware needs the <b>Waveshare ESP32-C6-Touch-LCD-1.47</b>, the version <b>with touch</b>.</p>
+    <p>The similar looking <b>ESP32-C6-LCD-1.47 without touch is not supported</b>. It uses different pins and the display stays dark.</p>
+  </section>
+
+  <section>
+    <h2>Install</h2>
+    <ol>
+      <li>Connect the board to your computer with a USB-C data cable.</li>
+      <li>Press the button below and choose the serial port of the board.</li>
+      <li>Wait until flashing is done, then enter your WiFi name and password when asked.</li>
+    </ol>
+    <esp-web-install-button manifest="manifest.json">
+      <button slot="activate" class="install">Install Clawd Desk Buddy</button>
+      <p slot="unsupported" class="unsupported">Your browser cannot talk to USB devices. Please use Chrome or Edge on a computer.</p>
+      <p slot="not-allowed" class="unsupported">This page has to be opened over HTTPS to use the flasher.</p>
+    </esp-web-install-button>
+    <p class="version" id="version"></p>
+  </section>
+
+  <section>
+    <h2>After flashing</h2>
+    <p>Open <a href="http://clawd.local">http://clawd.local</a> on a phone or computer in the same WiFi to change expressions, colors, brightness and the sleep schedule.</p>
+    <p>Skipped the WiFi step? The buddy opens its own WiFi network <b>Clawd-Setup</b>. Join it and choose your home network there.</p>
+  </section>
+
+  <footer>
+    <p><a href="https://github.com/PXWaldy/clawd-desk-buddy">Source code and documentation on GitHub</a></p>
+    <p>Fan project. Not affiliated with, endorsed by or sponsored by Anthropic. "Claude" and "Clawd" are trademarks of Anthropic.</p>
+  </footer>
+</main>
+<script>
+fetch("manifest.json").then(r => r.json()).then(m => {
+  document.getElementById("version").textContent = "Firmware version " + m.version;
+}).catch(() => {});
+</script>
+</body>
+</html>
