@@ -40,7 +40,7 @@ main { max-width: 720px; margin: 0 auto; padding: 40px 16px 64px; display: grid;
 
 /* ---- link back to the main site */
 .home { justify-self: start; margin: 0 4px 8px; font: 500 13px/1 var(--mono); color: var(--muted-foreground); text-decoration: none; padding: 6px 0; }
-.home::before { content: "\2190\00a0"; color: var(--primary); }
+.home::before { content: "<\00a0"; color: var(--primary); }
 .home:hover { color: var(--foreground); }
 
 /* ---- header */
@@ -50,7 +50,7 @@ h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -.02em; line-
 header p { margin: 2px 0 0; color: var(--muted-foreground); font-size: 14px; }
 
 /* ---- section labels, written like code comments */
-h2 { margin: 14px 4px -6px; font: 500 13px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted-foreground); }
+h2 { margin: 14px 4px -6px; font: 500 13px/1 var(--mono); letter-spacing: .12em; text-transform: lowercase; color: var(--muted-foreground); }
 h2::before { content: "/ "; color: var(--primary); }
 
 /* ---- card */
