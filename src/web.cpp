@@ -130,6 +130,7 @@ String stateJson() {
     doc["sleep_to"] = minutesToClock(s.sleepToMin);
     doc["wake_seconds"] = s.wakeSeconds;
     doc["time"] = sleep_schedule::localTime();
+    doc["clock_24h"] = s.clock24h;
     doc["timezone"] = s.timezoneName;
     doc["password_enabled"] = s.passwordEnabled;
     doc["bg"] = colorToHex(s.colorBackground);
@@ -230,6 +231,10 @@ const char* applyPatch(JsonVariantConst patch) {
                                     (int)cfg::WAKE_SECONDS_MAX);
         settings::update([value](Settings& s) { s.wakeSeconds = (uint16_t)value; });
         behavior::post(EventType::SetWakeSeconds, value);
+    }
+    if (patch["clock_24h"].is<bool>()) {
+        const bool on = patch["clock_24h"];
+        settings::update([on](Settings& s) { s.clock24h = on; });
     }
     if (patch["timezone"].is<JsonObjectConst>()) {
         const char* name = patch["timezone"]["name"] | "";

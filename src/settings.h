@@ -22,6 +22,7 @@ struct Settings {
     uint16_t sleepToMin;
     uint16_t wakeSeconds;      // tap while asleep: stay awake this long
 
+    bool clock24h;             // time format in the web UI
     char timezoneName[40];     // e.g. "Europe/Berlin", shown in the web UI
     char timezonePosix[48];    // matching POSIX TZ rule, used by the clock
 

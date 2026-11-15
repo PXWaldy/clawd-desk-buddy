@@ -88,8 +88,19 @@ input[type=color] {
 .check input:checked + i::after { opacity: 1; }
 .check input:disabled + i { opacity: .6; }
 .check input:focus-visible + i { outline: 2px solid var(--accent); outline-offset: 2px; }
+.time { display: flex; align-items: center; gap: 6px; }
+.time select { appearance: none; -webkit-appearance: none; padding: 0 4px; width: 58px; flex: none; text-align: center; text-align-last: center; cursor: pointer; }
+/* two buttons that work like a switch with labels */
+.seg { display: flex; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; min-height: 48px; }
+.seg button { flex: 1; border: 0; border-radius: 0; min-height: 46px; padding: 0 14px; background: var(--bg); color: var(--muted); white-space: nowrap; }
+.seg button[aria-pressed=true] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.field label.filebtn { display: inline-flex; align-items: center; position: relative; white-space: nowrap; font-size: inherit; color: var(--text); margin: 0; }
+.filebtn input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.filebtn:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.filename { flex: 1; min-width: 0; align-self: center; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .times { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; padding: 12px 0; }
-.times .field { margin: 0; flex: 1; min-width: 110px; }
+.times .field { margin: 0; flex: 1 0 auto; min-width: 150px; }
+.times .field input { min-width: 0; }
 .view .dice { width: 100%; max-width: 128px; aspect-ratio: 320 / 172; border-radius: 9px; background: var(--bg); display: grid; place-items: center; font-size: 26px; }
 .colors { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
 .colors canvas { width: 180px; height: 97px; border-radius: 12px; }
@@ -99,10 +110,8 @@ input[type=color] {
 .networks button.active { border-color: var(--accent); background: var(--accent-soft); }
 .field { margin-top: 12px; }
 .field label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 6px; }
-.inline { display: flex; gap: 10px; }
+.inline { display: flex; gap: 10px; flex-wrap: wrap; }
 .inline input { flex: 1; min-width: 0; }
-input[type=file] { font: inherit; color: var(--muted); min-height: 48px; padding: 10px 0; width: 100%; }
-input[type=file]::file-selector-button { font: inherit; color: var(--text); background: var(--card-2); border: 1px solid var(--line); border-radius: 12px; min-height: 40px; padding: 0 14px; margin-right: 12px; cursor: pointer; }
 progress { width: 100%; height: 10px; margin-top: 12px; accent-color: var(--accent); }
 code { background: var(--card-2); border-radius: 6px; padding: 1px 6px; font-size: 13px; }
 .status { margin-top: 12px; min-height: 22px; font-size: 14px; }
@@ -170,9 +179,15 @@ dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
       <label class="switch"><input type="checkbox" id="sleepEnabled" aria-label="Sleep schedule"><i></i></label>
     </div>
     <div class="times">
-      <div class="field"><label for="sleepFrom">Sleep from</label><input type="time" id="sleepFrom"></div>
-      <div class="field"><label for="sleepTo">until</label><input type="time" id="sleepTo"></div>
+      <div class="field"><label id="sleepFromLabel">Sleep from</label><div class="time" id="sleepFrom" role="group" aria-labelledby="sleepFromLabel"></div></div>
+      <div class="field"><label id="sleepToLabel">until</label><div class="time" id="sleepTo" role="group" aria-labelledby="sleepToLabel"></div></div>
       <div class="field"><label for="wakeSeconds">Tap wakes for (seconds)</label><input type="number" id="wakeSeconds" min="5" max="600" step="5" inputmode="numeric"></div>
+      <div class="field"><label id="clockLabel">Time format</label>
+        <div class="seg" role="group" aria-labelledby="clockLabel">
+          <button id="clock24" aria-pressed="true">24 h</button>
+          <button id="clock12" aria-pressed="false">AM/PM</button>
+        </div>
+      </div>
     </div>
     <p class="note" style="margin-top:0">While asleep the display is off. A tap wakes Clawd for the time set here.</p>
   </section>
@@ -241,7 +256,8 @@ dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
     <div class="field" style="margin-top:18px">
       <label for="firmwareFile">Firmware update</label>
       <div class="inline">
-        <input type="file" id="firmwareFile" accept=".bin">
+        <label class="btn filebtn"><input type="file" id="firmwareFile" accept=".bin">Choose file</label>
+        <span class="filename" id="firmwareName">No file chosen</span>
         <button id="firmwareUpload">Upload</button>
       </div>
       <progress id="firmwareProgress" class="hidden" max="100" value="0"></progress>
@@ -495,13 +511,17 @@ function applyState(next) {
     $("bg").value = state.bg;
     $("eye").value = state.eye;
     $("sleepEnabled").checked = state.sleep_enabled;
-    for (const [id, value] of [["sleepFrom", state.sleep_from], ["sleepTo", state.sleep_to],
-                               ["wakeSeconds", state.wake_seconds], ["timezone", state.timezone]]) {
+    for (const [id, value] of [["wakeSeconds", state.wake_seconds], ["timezone", state.timezone]]) {
       if (document.activeElement !== $(id)) $(id).value = value;
     }
+    for (const [id, value] of [["sleepFrom", state.sleep_from], ["sleepTo", state.sleep_to]]) {
+      if (!$(id).contains(document.activeElement)) setTime(id, value);
+    }
+    $("clock24").setAttribute("aria-pressed", state.clock_24h);
+    $("clock12").setAttribute("aria-pressed", !state.clock_24h);
   }
   $("clock").textContent = state.time
-    ? "Device time " + state.time + (state.asleep ? ", asleep" : "")
+    ? "Device time " + showTime(state.time) + (state.asleep ? ", asleep" : "")
     : "Waiting for the time from the internet";
   $("passState").textContent = state.password_enabled ? "(on)" : "(off)";
   $("passButtons").classList.toggle("hidden", !state.password_enabled);
@@ -541,8 +561,58 @@ $("colorReset").onclick = () => { busyUntil = 0; post("/api/colors/reset"); };
 $("colorOriginal").onclick = () => { busyUntil = 0; post("/api/state", { bg: state.defaults.claude_orange }); };
 
 $("sleepEnabled").onchange = e => send({ sleep_enabled: e.target.checked });
-$("sleepFrom").onchange = e => { if (e.target.value) send({ sleep_from: e.target.value }); };
-$("sleepTo").onchange = e => { if (e.target.value) send({ sleep_to: e.target.value }); };
+// Time fields are built from plain lists, so they look the same in every
+// browser and follow the time format chosen here (not the browser language).
+const two = n => String(n).padStart(2, "0");
+
+function showTime(clock) {
+  if (!state || state.clock_24h) return clock;
+  const [h, m] = clock.split(":").map(Number);
+  return (h % 12 || 12) + ":" + two(m) + (h < 12 ? " AM" : " PM");
+}
+
+function setTime(id, clock) {
+  const box = $(id);
+  const [h, m] = clock.split(":").map(Number);
+  const use24 = !state || state.clock_24h;
+  const mode = (use24 ? "24" : "12") + ":" + m;
+  if (box.dataset.mode !== mode) {
+    // (Re)build the lists: hours, minutes in steps of 5, and AM/PM if needed.
+    box.dataset.mode = mode;
+    box.textContent = "";
+    const list = (label, values, text) => {
+      const select = document.createElement("select");
+      select.setAttribute("aria-label", label);
+      values.forEach(v => select.append(new Option(text(v), v)));
+      select.onchange = () => send({ [id === "sleepFrom" ? "sleep_from" : "sleep_to"]: getTime(id) });
+      box.append(select);
+      return select;
+    };
+    list("Hour", use24 ? [...Array(24).keys()] : [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], v => use24 ? two(v) : v);
+    box.append(":");
+    const minutes = [...Array(12).keys()].map(i => i * 5);
+    if (!minutes.includes(m)) minutes.push(m);
+    list("Minute", minutes.sort((a, b) => a - b), two);
+    if (!use24) list("AM or PM", ["AM", "PM"], v => v);
+  }
+  const selects = box.querySelectorAll("select");
+  selects[0].value = use24 ? h : (h % 12 || 12);
+  selects[1].value = m;
+  if (!use24) selects[2].value = h < 12 ? "AM" : "PM";
+}
+
+function getTime(id) {
+  const selects = $(id).querySelectorAll("select");
+  let h = +selects[0].value;
+  if (selects.length === 3) h = (h % 12) + (selects[2].value === "PM" ? 12 : 0);
+  return two(h) + ":" + two(+selects[1].value);
+}
+
+$("clock24").onclick = () => { busyUntil = 0; send({ clock_24h: true }); busyUntil = 0; };
+$("clock12").onclick = () => { busyUntil = 0; send({ clock_24h: false }); busyUntil = 0; };
+$("firmwareFile").onchange = e => {
+  $("firmwareName").textContent = e.target.files[0] ? e.target.files[0].name : "No file chosen";
+};
 $("wakeSeconds").onchange = e => {
   const value = Math.min(600, Math.max(5, Math.round(+e.target.value) || 30));
   e.target.value = value;

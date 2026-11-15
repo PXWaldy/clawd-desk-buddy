@@ -29,6 +29,7 @@ void setDefaults(Settings& s) {
     s.sleepFromMin = cfg::SLEEP_FROM_DEFAULT_MIN;
     s.sleepToMin = cfg::SLEEP_TO_DEFAULT_MIN;
     s.wakeSeconds = cfg::WAKE_SECONDS_DEFAULT;
+    s.clock24h = true;
     strlcpy(s.timezoneName, cfg::DEFAULT_TIMEZONE_NAME, sizeof(s.timezoneName));
     strlcpy(s.timezonePosix, cfg::DEFAULT_TIMEZONE, sizeof(s.timezonePosix));
     s.passwordEnabled = false;
@@ -51,6 +52,7 @@ void write(const Settings& s) {
     prefs.putUShort("sleepFrom", s.sleepFromMin);
     prefs.putUShort("sleepTo", s.sleepToMin);
     prefs.putUShort("wakeSec", s.wakeSeconds);
+    prefs.putBool("clock24h", s.clock24h);
     prefs.putString("tzName", s.timezoneName);
     prefs.putString("tzPosix", s.timezonePosix);
     prefs.putBool("pwOn", s.passwordEnabled);
@@ -84,6 +86,7 @@ void begin() {
     current.sleepFromMin = prefs.getUShort("sleepFrom", current.sleepFromMin) % (24 * 60);
     current.sleepToMin = prefs.getUShort("sleepTo", current.sleepToMin) % (24 * 60);
     current.wakeSeconds = prefs.getUShort("wakeSec", current.wakeSeconds);
+    current.clock24h = prefs.getBool("clock24h", current.clock24h);
     if (prefs.isKey("tzName") && prefs.isKey("tzPosix")) {
         prefs.getString("tzName", current.timezoneName, sizeof(current.timezoneName));
         prefs.getString("tzPosix", current.timezonePosix, sizeof(current.timezonePosix));
