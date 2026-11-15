@@ -1,0 +1,29 @@
+// Web flasher on Cloudflare: a Worker that only serves static files.
+// Public address: https://pxwaldy.com/clawd-desk-buddy/
+//
+// The files in ./dist are built by scripts/build_flasher.py (page, fonts,
+// manifest and the firmware). There is no Worker script, only assets.
+{
+	"name": "clawd-desk-buddy-flasher",
+	"compatibility_date": "2026-11-15",
+
+	// Only this path of the domain belongs to the flasher. The root of
+	// pxwaldy.com is a separate project and is not touched by these routes.
+	// The second route catches the address without the trailing slash, so it
+	// can be redirected to the right place.
+	"routes": [
+		{ "pattern": "pxwaldy.com/clawd-desk-buddy/*", "zone_name": "pxwaldy.com" },
+		{ "pattern": "pxwaldy.com/clawd-desk-buddy", "zone_name": "pxwaldy.com" }
+	],
+
+	// No extra addresses besides the route above
+	"workers_dev": false,
+	"preview_urls": false,
+
+	"assets": {
+		"directory": "./dist",
+		// Serves ./dist under /clawd-desk-buddy/ (needs Wrangler 4.148.0 or later)
+		"base_path": "/clawd-desk-buddy",
+		"not_found_handling": "404-page"
+	}
+}

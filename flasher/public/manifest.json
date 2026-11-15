@@ -5,7 +5,7 @@
   "builds": [
     {
       "chipFamily": "ESP32-C6",
-      "parts": [{ "path": "firmware.bin", "offset": 0 }]
+      "parts": [{ "path": "/clawd-desk-buddy/firmware.bin", "offset": 0 }]
     }
   ]
 }

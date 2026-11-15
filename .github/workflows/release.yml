@@ -1,7 +1,11 @@
 # Runs when a version tag like v1.2.0 is pushed:
 #   1. builds the firmware with that version
 #   2. creates a GitHub release with the binaries
-#   3. publishes the web flasher (GitHub Pages) with the new firmware
+#   3. deploys the web flasher with the new firmware to Cloudflare
+#      (https://pxwaldy.com/clawd-desk-buddy/)
+#
+# Needs two repository secrets, see "Releases" in the README:
+#   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
 name: Release
 
 on:
@@ -10,21 +14,25 @@ on:
 
 permissions:
   contents: write    # create the release
-  pages: write       # publish the web flasher
-  id-token: write
+
+# Never run two deploys at the same time
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.pages.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
 
       - uses: actions/cache@v4
         with:
@@ -42,23 +50,16 @@ jobs:
       - name: Collect binaries
         run: |
           version="${GITHUB_REF_NAME#v}"
-          mkdir -p dist site
+          mkdir -p dist
           # Merged image (bootloader + partitions + app) for the web flasher and esptool
           cp .pio/build/clawd/firmware.factory.bin "dist/clawd-desk-buddy-${version}-factory.bin"
           # App image for updates through the web UI
           cp .pio/build/clawd/firmware.bin "dist/clawd-desk-buddy-${version}-ota.bin"
 
-          # Web flasher: page, firmware and a manifest with the new version
-          cp flasher/index.html site/
-          cp .pio/build/clawd/firmware.factory.bin site/firmware.bin
-          python3 - "$version" <<'PY'
-          import json, sys
-          with open("flasher/manifest.json") as f:
-              manifest = json.load(f)
-          manifest["version"] = sys.argv[1]
-          with open("site/manifest.json", "w") as f:
-              json.dump(manifest, f, indent=2)
-          PY
+      - name: Build web flasher
+        # Page, fonts, merged firmware and a manifest with the new version,
+        # all in flasher/dist and all served from the same address.
+        run: python3 scripts/build_flasher.py --version "$GITHUB_REF_NAME"
 
       - name: Create release
         uses: softprops/action-gh-release@v2
@@ -66,10 +67,27 @@ jobs:
           files: dist/*.bin
           generate_release_notes: true
 
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
-      - name: Publish web flasher
-        id: pages
-        uses: actions/deploy-pages@v4
+      - name: Deploy web flasher to Cloudflare
+        working-directory: flasher
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        # The version is pinned: "base_path" in wrangler.jsonc needs 4.148.0 or later
+        run: npx --yes wrangler@4.162.0 deploy
+
+      - name: Check that the flasher serves the new firmware
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          base="https://pxwaldy.com/clawd-desk-buddy"
+          for attempt in 1 2 3 4 5 6; do
+            online="$(curl -fsS "$base/manifest.json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])' || true)"
+            if [ "$online" = "$version" ] && curl -fsS -o /tmp/online.bin "$base/firmware.bin" \
+               && cmp -s /tmp/online.bin flasher/dist/firmware.bin; then
+              echo "Flasher is online with firmware $version"
+              exit 0
+            fi
+            echo "Not updated yet (manifest says '$online'), trying again"
+            sleep 10
+          done
+          echo "::error::The flasher at $base does not serve firmware $version"
+          exit 1

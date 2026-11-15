@@ -5,3 +5,6 @@
 !docs/**/*.bin
 src/web_assets.h
 .impeccable/
+flasher/dist/
+.wrangler/
+node_modules/

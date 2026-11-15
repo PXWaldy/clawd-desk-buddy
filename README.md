@@ -40,8 +40,9 @@ Power comes from the USB-C port. No battery is needed.
 
 ### Web flasher (recommended)
 
-1. Open the web flasher in Chrome or Edge on a computer:
-   **<https://pxwaldy.github.io/clawd-desk-buddy/>**
+1. Open the web flasher in Chrome, Edge or Firefox 151 or newer on a computer
+   (Safari, iPhone and iPad are not supported):
+   **<https://pxwaldy.com/clawd-desk-buddy/>**
 2. Connect the board with a USB-C data cable.
 3. Press **Install Clawd Desk Buddy** and choose the serial port of the board.
 4. When flashing is done, enter the name and password of your WiFi network
@@ -180,7 +181,7 @@ protect the web UI and the API.
 |---|---|
 | The display stays dark | Check that you have the **Touch** version of the board |
 | `clawd.local` does not open | Use the IP address shown on the display after connecting, or look it up in your router. Some Android versions and guest networks do not support `.local` names. |
-| The web flasher does not find the board | Use Chrome or Edge on a computer and a USB cable that carries data, not only power |
+| The web flasher does not find the board | Use Chrome, Edge or Firefox 151 or newer on a computer and a USB cable that carries data, not only power. Safari, iPhone and iPad do not work. |
 | The setup page does not open by itself | Open `http://192.168.4.1` while connected to `Clawd-Setup` |
 | WiFi keeps dropping | The board has a small antenna. Move it closer to the router. The signal strength is shown in **Settings**. |
 | Sleep schedule does nothing | It needs the time from the internet. The header of the web UI shows the device time once it is known. |
@@ -224,7 +225,7 @@ src/settings.*       Persistent settings (NVS)
 src/sleep.*          Sleep schedule
 web/index.html       Web UI, packed into the firmware at build time
 web/fonts/           Fonts of the web UI, packed into the firmware as well
-flasher/             Web flasher page
+flasher/             Web flasher page and its Cloudflare configuration
 ```
 
 Everything that wants to influence the buddy posts an event to
@@ -241,9 +242,41 @@ opening the serial port restarts the board.
 
 Pushing a tag like `v1.2.0` starts the release workflow. It builds the
 firmware with that version, creates a GitHub release with the `-factory.bin`
-and `-ota.bin` files and publishes the web flasher with the new firmware to
-GitHub Pages. GitHub Pages has to be enabled once in the repository settings
-with the source **GitHub Actions**.
+and `-ota.bin` files and deploys the web flasher with the new firmware to
+Cloudflare. The page, the manifest and the firmware are all served from
+<https://pxwaldy.com/clawd-desk-buddy/>.
+
+The flasher is a Cloudflare Worker that only serves static files
+([flasher/wrangler.jsonc](flasher/wrangler.jsonc)). It is bound to the path
+`pxwaldy.com/clawd-desk-buddy/*`, the rest of the domain is not touched.
+
+One-time setup:
+
+1. `pxwaldy.com` needs a proxied DNS record (orange cloud) in Cloudflare.
+   Without one the address does not resolve and the Worker is never reached.
+   As long as there is no real site at the root, a placeholder is enough:
+   type `AAAA`, name `@`, content `100::`, proxied.
+2. Create a Cloudflare API token (**Manage account > Account API tokens >
+   Create Token > Custom token**) with exactly these permissions:
+
+   | Scope | Permission | Access | Resources |
+   |---|---|---|---|
+   | Account | Workers Scripts | Edit | only your account |
+   | Zone | Workers Routes | Edit | only the zone `pxwaldy.com` |
+
+3. Add two secrets to the GitHub repository (**Settings > Secrets and
+   variables > Actions**): `CLOUDFLARE_API_TOKEN` with the token and
+   `CLOUDFLARE_ACCOUNT_ID` with the account ID from the Cloudflare dashboard.
+
+To try the flasher page locally:
+
+```
+pio run
+python3 scripts/build_flasher.py
+cd flasher && npx wrangler@4.162.0 dev
+```
+
+Then open `http://localhost:8787/clawd-desk-buddy/`.
 
 ## Credits
 
