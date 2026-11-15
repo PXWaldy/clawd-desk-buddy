@@ -9,7 +9,9 @@
 #include "auth.h"
 #include "behavior.h"
 #include "config.h"
+#include "hint.h"
 #include "net.h"
+#include "ota.h"
 #include "settings.h"
 #include "sleep.h"
 #include "web_assets.h"
@@ -21,6 +23,7 @@ AsyncWebSocket ws("/ws");
 
 volatile bool broadcastNeeded = false;
 volatile bool reboot = false;
+bool updateOk = false;
 uint32_t lastBehaviorVersion = 0;
 uint32_t lastBroadcastMs = 0;
 
@@ -460,6 +463,37 @@ void begin() {
         sendResult(request, nullptr);
         reboot = true;
     });
+
+    // Firmware update: the file arrives in pieces through the upload callback,
+    // the request callback then reports the result.
+    server.on(
+        "/api/update", HTTP_POST,
+        [](AsyncWebServerRequest* request) {
+            if (!authorized(request)) return;   // already answered by the middleware
+            if (updateOk) {
+                sendResult(request, nullptr);
+                reboot = true;
+            } else {
+                sendResult(request, ota::error()[0] ? ota::error() : "No firmware file received.");
+                hint::clear();
+            }
+        },
+        [](AsyncWebServerRequest* request, const String&, size_t index, uint8_t* data,
+           size_t len, bool final) {
+            // The upload callback runs before the request is checked, so the
+            // session has to be verified here as well.
+            if (!authorized(request)) return;
+            if (index == 0) {
+                updateOk = false;
+                ota::begin();
+                hint::show("Updating firmware", "", "Do not unplug", 0);
+            }
+            ota::write(data, len);
+            if (final) {
+                updateOk = ota::finish();
+                if (updateOk) hint::show("Update done", "", "Restarting...", 0);
+            }
+        });
 
     server.onNotFound(handleNotFound);
     server.begin();

@@ -101,6 +101,10 @@ input[type=color] {
 .field label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 6px; }
 .inline { display: flex; gap: 10px; }
 .inline input { flex: 1; min-width: 0; }
+input[type=file] { font: inherit; color: var(--muted); min-height: 48px; padding: 10px 0; width: 100%; }
+input[type=file]::file-selector-button { font: inherit; color: var(--text); background: var(--card-2); border: 1px solid var(--line); border-radius: 12px; min-height: 40px; padding: 0 14px; margin-right: 12px; cursor: pointer; }
+progress { width: 100%; height: 10px; margin-top: 12px; accent-color: var(--accent); }
+code { background: var(--card-2); border-radius: 6px; padding: 1px 6px; font-size: 13px; }
 .status { margin-top: 12px; min-height: 22px; font-size: 14px; }
 .status.err { color: var(--danger); }
 .hidden { display: none !important; }
@@ -234,6 +238,16 @@ dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
       <dt>Address</dt><dd id="infoHost">–</dd>
       <dt>Firmware</dt><dd id="infoVersion">–</dd>
     </dl>
+    <div class="field" style="margin-top:18px">
+      <label for="firmwareFile">Firmware update</label>
+      <div class="inline">
+        <input type="file" id="firmwareFile" accept=".bin">
+        <button id="firmwareUpload">Upload</button>
+      </div>
+      <progress id="firmwareProgress" class="hidden" max="100" value="0"></progress>
+      <div class="status" id="firmwareStatus"></div>
+      <p class="note" style="margin-top:0">Use a <code>.bin</code> file from the releases page. Both the <code>-ota.bin</code> and the <code>-factory.bin</code> file work. Your settings are kept.</p>
+    </div>
     <div class="buttons">
       <button id="reboot">Reboot</button>
       <button class="danger" id="wifiReset">Reset WiFi</button>
@@ -640,6 +654,46 @@ $("hostnameSave").onclick = async () => {
     ? "Saved. The new address is http://" + name + ".local"
     : (result.error || "Could not save.");
 };
+$("firmwareUpload").onclick = () => {
+  const file = $("firmwareFile").files[0];
+  const status = $("firmwareStatus"), progress = $("firmwareProgress");
+  if (!file) { status.className = "status err"; status.textContent = "Please choose a firmware file first."; return; }
+  if (!confirm("Install " + file.name + " now? Clawd restarts afterwards.")) return;
+  const form = new FormData();
+  form.append("firmware", file, file.name);
+  const request = new XMLHttpRequest();
+  request.open("POST", "/api/update");
+  request.upload.onprogress = e => {
+    if (e.lengthComputable) progress.value = Math.round(e.loaded / e.total * 100);
+  };
+  request.onload = () => {
+    let result = {};
+    try { result = JSON.parse(request.responseText); } catch (e) { /* no JSON */ }
+    progress.classList.add("hidden");
+    $("firmwareUpload").disabled = false;
+    if (request.status === 200 && result.ok) {
+      status.className = "status";
+      status.textContent = "Update installed. Clawd is restarting, this page reloads in a moment.";
+      setTimeout(() => location.reload(), 12000);
+    } else {
+      status.className = "status err";
+      status.textContent = result.error || "The update failed.";
+    }
+  };
+  request.onerror = () => {
+    progress.classList.add("hidden");
+    $("firmwareUpload").disabled = false;
+    status.className = "status err";
+    status.textContent = "The connection was lost during the upload. Please try again.";
+  };
+  status.className = "status";
+  status.textContent = "Uploading…";
+  progress.value = 0;
+  progress.classList.remove("hidden");
+  $("firmwareUpload").disabled = true;
+  request.send(form);
+};
+
 $("reboot").onclick = () => { if (confirm("Reboot Clawd now?")) post("/api/reboot"); };
 $("wifiReset").onclick = () => {
   if (confirm("Forget the WiFi network? Clawd then opens the setup network \"Clawd-Setup\".")) {
