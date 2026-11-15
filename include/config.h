@@ -76,7 +76,11 @@ constexpr uint32_t BLINK_OPEN_MS  = 100;
 // ---------------------------------------------------------------------------
 // Colors (RGB888)
 // ---------------------------------------------------------------------------
-constexpr uint32_t COLOR_BACKGROUND = 0xD97757;  // Claude orange
+// Claude orange is #D97757. This panel shows colors paler and cooler than a
+// phone or monitor, so the original value looks pink on it. The default below
+// was picked by eye on the real display to look like Claude orange.
+constexpr uint32_t COLOR_CLAUDE_ORANGE = 0xD97757;
+constexpr uint32_t COLOR_BACKGROUND    = 0xE05500;
 constexpr uint32_t COLOR_EYE        = 0x000000;
 
 // Accent colors. They are independent of the eye color and are picked to
