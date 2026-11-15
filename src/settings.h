@@ -15,6 +15,20 @@ struct Settings {
     uint16_t enabledMask;      // one bit per expression
     bool randomMode;
     uint16_t randomIntervalS;
+
+    // Sleep schedule (minutes since midnight, local time)
+    bool sleepEnabled;
+    uint16_t sleepFromMin;
+    uint16_t sleepToMin;
+    uint16_t wakeSeconds;      // tap while asleep: stay awake this long
+
+    char timezoneName[40];     // e.g. "Europe/Berlin", shown in the web UI
+    char timezonePosix[48];    // matching POSIX TZ rule, used by the clock
+
+    // Optional password for the web UI. Only a salted hash is stored.
+    bool passwordEnabled;
+    uint8_t passwordSalt[16];
+    uint8_t passwordHash[32];
 };
 
 namespace settings {

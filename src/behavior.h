@@ -21,6 +21,8 @@ enum class EventType : uint8_t {
     SetEyeColor,       // value = RGB888
     SetBrightness,     // value = percent
     SetDisplayOn,      // value = 0 / 1
+    SetSleepWanted,    // value = 0 / 1, from the sleep schedule
+    SetWakeSeconds,    // value = seconds to stay awake after a tap while asleep
 };
 
 struct Event {
@@ -41,7 +43,10 @@ Expression baseExpression();
 bool randomMode();
 uint16_t enabledMask();
 uint32_t randomIntervalS();
-bool displayOn();
+
+// False while the buddy sleeps (schedule or display switched off). The
+// backlight follows this.
+bool screenLit();
 
 // Increases whenever the visible state (expression, random mode) changes, so
 // the web UI knows when to refresh.

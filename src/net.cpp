@@ -133,9 +133,9 @@ void onConnected(uint32_t now) {
     result = net::ConnectResult::Ok;
 
     startMdns();
-    configTzTime(cfg::DEFAULT_TIMEZONE, cfg::NTP_SERVER);
-
     const Settings s = settings::get();
+    configTzTime(s.timezonePosix, cfg::NTP_SERVER);
+
     const String address = WiFi.localIP().toString();
     char name[40];
     snprintf(name, sizeof(name), "%s.local", s.hostname);

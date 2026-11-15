@@ -6,10 +6,12 @@
 #include <ESPAsyncWebServer.h>
 #include <WiFi.h>
 
+#include "auth.h"
 #include "behavior.h"
 #include "config.h"
 #include "net.h"
 #include "settings.h"
+#include "sleep.h"
 #include "web_assets.h"
 
 namespace {
@@ -39,6 +41,64 @@ bool hexToColor(const char* text, uint32_t& rgb) {
     return true;
 }
 
+String minutesToClock(uint16_t minutes) {
+    char text[6];
+    snprintf(text, sizeof(text), "%02u:%02u", (unsigned)(minutes / 60), (unsigned)(minutes % 60));
+    return text;
+}
+
+// Parses "HH:MM". Returns -1 if the text is not a valid time.
+int clockToMinutes(const char* text) {
+    if (text == nullptr || strlen(text) != 5 || text[2] != ':') return -1;
+    for (int i : {0, 1, 3, 4}) {
+        if (text[i] < '0' || text[i] > '9') return -1;
+    }
+    const int hours = (text[0] - '0') * 10 + (text[1] - '0');
+    const int minutes = (text[3] - '0') * 10 + (text[4] - '0');
+    if (hours > 23 || minutes > 59) return -1;
+    return hours * 60 + minutes;
+}
+
+// A POSIX TZ rule like "CET-1CEST,M3.5.0,M10.5.0/3": printable ASCII only.
+bool validTimezoneRule(const char* text) {
+    const size_t length = text ? strlen(text) : 0;
+    if (length < 3 || length > 47) return false;
+    for (size_t i = 0; i < length; i++) {
+        if (text[i] <= ' ' || text[i] > '~') return false;
+    }
+    return true;
+}
+
+// --- sessions --------------------------------------------------------------
+
+constexpr char COOKIE_NAME[] = "clawd_session";
+
+String sessionToken(AsyncWebServerRequest* request) {
+    if (!request->hasHeader("Cookie")) return String();
+    const String cookies = request->header("Cookie");
+    const String key = String(COOKIE_NAME) + "=";
+    int start = cookies.indexOf(key);
+    if (start < 0) return String();
+    start += key.length();
+    int end = cookies.indexOf(';', start);
+    if (end < 0) end = cookies.length();
+    return cookies.substring(start, end);
+}
+
+bool authorized(AsyncWebServerRequest* request) {
+    return !auth::enabled() || auth::validSession(sessionToken(request));
+}
+
+void sendWithSession(AsyncWebServerRequest* request, const String& token) {
+    AsyncWebServerResponse* response =
+        request->beginResponse(200, "application/json", "{\"ok\":true}");
+    // HttpOnly: scripts cannot read the token. SameSite: other sites cannot use it.
+    response->addHeader("Set-Cookie", String(COOKIE_NAME) + "=" + token +
+                                          "; Path=/; HttpOnly; SameSite=Strict" +
+                                          (token.isEmpty() ? "; Max-Age=0" : ""));
+    request->send(response);
+}
+
 int expressionFromId(const char* id) {
     if (id == nullptr) return -1;
     for (uint8_t i = 0; i < EXPRESSION_COUNT; i++) {
@@ -61,6 +121,14 @@ String stateJson() {
     doc["interval"] = s.randomIntervalS;
     doc["interval_min"] = cfg::RANDOM_INTERVAL_MIN_S;
     doc["interval_max"] = cfg::RANDOM_INTERVAL_MAX_S;
+    doc["asleep"] = !behavior::screenLit();
+    doc["sleep_enabled"] = s.sleepEnabled;
+    doc["sleep_from"] = minutesToClock(s.sleepFromMin);
+    doc["sleep_to"] = minutesToClock(s.sleepToMin);
+    doc["wake_seconds"] = s.wakeSeconds;
+    doc["time"] = sleep_schedule::localTime();
+    doc["timezone"] = s.timezoneName;
+    doc["password_enabled"] = s.passwordEnabled;
     doc["bg"] = colorToHex(s.colorBackground);
     doc["eye"] = colorToHex(s.colorEye);
 
@@ -139,6 +207,37 @@ const char* applyPatch(JsonVariantConst patch) {
         if (mask == 0) return "at least one expression must stay enabled";
         settings::update([mask](Settings& s) { s.enabledMask = mask; });
         behavior::post(EventType::SetEnabledMask, mask);
+    }
+    if (patch["sleep_enabled"].is<bool>()) {
+        const bool on = patch["sleep_enabled"];
+        settings::update([on](Settings& s) { s.sleepEnabled = on; });
+    }
+    if (patch["sleep_from"].is<const char*>()) {
+        const int minutes = clockToMinutes(patch["sleep_from"]);
+        if (minutes < 0) return "invalid time";
+        settings::update([minutes](Settings& s) { s.sleepFromMin = (uint16_t)minutes; });
+    }
+    if (patch["sleep_to"].is<const char*>()) {
+        const int minutes = clockToMinutes(patch["sleep_to"]);
+        if (minutes < 0) return "invalid time";
+        settings::update([minutes](Settings& s) { s.sleepToMin = (uint16_t)minutes; });
+    }
+    if (patch["wake_seconds"].is<int>()) {
+        const int value = constrain(patch["wake_seconds"].as<int>(), (int)cfg::WAKE_SECONDS_MIN,
+                                    (int)cfg::WAKE_SECONDS_MAX);
+        settings::update([value](Settings& s) { s.wakeSeconds = (uint16_t)value; });
+        behavior::post(EventType::SetWakeSeconds, value);
+    }
+    if (patch["timezone"].is<JsonObjectConst>()) {
+        const char* name = patch["timezone"]["name"] | "";
+        const char* rule = patch["timezone"]["posix"] | "";
+        if (strlen(name) < 1 || strlen(name) > 39 || !validTimezoneRule(rule)) {
+            return "invalid timezone";
+        }
+        settings::update([name, rule](Settings& s) {
+            strlcpy(s.timezoneName, name, sizeof(s.timezoneName));
+            strlcpy(s.timezonePosix, rule, sizeof(s.timezonePosix));
+        });
     }
     uint32_t color;
     if (patch["bg"].is<const char*>()) {
@@ -251,8 +350,68 @@ void handleWsEvent(AsyncWebSocket*, AsyncWebSocketClient* client, AwsEventType t
 namespace web {
 
 void begin() {
+    // Password protection: without a valid session only the page itself and
+    // the login endpoints are reachable.
+    server.addMiddleware([](AsyncWebServerRequest* request, ArMiddlewareNext next) {
+        const String& url = request->url();
+        const bool isProtected = url.startsWith("/api/") || url == "/ws";
+        const bool isOpen = url == "/api/login" || url == "/api/auth";
+        if (isProtected && !isOpen && !authorized(request)) {
+            request->send(401, "application/json", "{\"ok\":false,\"error\":\"login required\"}");
+            return;
+        }
+        next();
+    });
+
     ws.onEvent(handleWsEvent);
     server.addHandler(&ws);
+
+    server.on("/api/auth", HTTP_GET, [](AsyncWebServerRequest* request) {
+        JsonDocument doc;
+        doc["enabled"] = auth::enabled();
+        doc["authorized"] = authorized(request);
+        String out;
+        serializeJson(doc, out);
+        request->send(200, "application/json", out);
+    });
+
+    auto* loginHandler = new AsyncCallbackJsonWebHandler(
+        "/api/login", [](AsyncWebServerRequest* request, JsonVariant& json) {
+            bool tooFast = false;
+            if (auth::checkPassword(json["password"] | "", tooFast)) {
+                sendWithSession(request, auth::createSession());
+            } else if (tooFast) {
+                request->send(429, "application/json",
+                              "{\"ok\":false,\"error\":\"Please wait a moment and try again.\"}");
+            } else {
+                request->send(401, "application/json",
+                              "{\"ok\":false,\"error\":\"Wrong password.\"}");
+            }
+        });
+    loginHandler->setMethod(HTTP_POST);
+    server.addHandler(loginHandler);
+
+    server.on("/api/logout", HTTP_POST, [](AsyncWebServerRequest* request) {
+        auth::endSession(sessionToken(request));
+        sendWithSession(request, String());
+    });
+
+    // Sets, changes or removes (empty) the password. All other sessions end.
+    auto* passwordHandler = new AsyncCallbackJsonWebHandler(
+        "/api/password", [](AsyncWebServerRequest* request, JsonVariant& json) {
+            const char* password = json["password"] | "";
+            const size_t length = strlen(password);
+            if (length != 0 && (length < cfg::PASSWORD_MIN_LENGTH || length > 64)) {
+                sendResult(request, "The password needs 4 to 64 characters.");
+                return;
+            }
+            auth::setPassword(password);
+            ws.closeAll();
+            broadcastNeeded = true;
+            sendWithSession(request, length ? auth::createSession() : String());
+        });
+    passwordHandler->setMethod(HTTP_POST);
+    server.addHandler(passwordHandler);
 
     server.on("/", HTTP_GET, handleIndex);
     server.on("/index.html", HTTP_GET, handleIndex);

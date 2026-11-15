@@ -13,6 +13,7 @@
 #include "improv_serial.h"
 #include "net.h"
 #include "settings.h"
+#include "sleep.h"
 #include "touch.h"
 #include "web.h"
 
@@ -56,7 +57,7 @@ void handleGesture(touch::Gesture gesture) {
 // The animation runs in its own task so it stays smooth no matter what the
 // rest of the firmware (WiFi, web server) is doing.
 void animationTask(void*) {
-    bool firstFrame = true;
+    bool backlightOn = false;
     TickType_t wake = xTaskGetTickCount();
     for (;;) {
         const uint32_t now = millis();
@@ -66,12 +67,18 @@ void animationTask(void*) {
         handleGesture(gesture);
         behavior::update(now);
 
-        if (hint::active(now)) hint::draw();
-        else eyes::draw(now);
-
-        if (display::present() && firstFrame) {
-            firstFrame = false;
-            display::setBacklight(behavior::displayOn());
+        // While asleep nothing is drawn and the backlight is off. A hint
+        // (long press, WiFi setup) still lights the screen.
+        const bool hintShown = hint::active(now);
+        const bool lit = hintShown || behavior::screenLit();
+        if (lit) {
+            if (hintShown) hint::draw();
+            else eyes::draw(now);
+            display::present();
+        }
+        if (lit != backlightOn) {
+            backlightOn = lit;
+            display::setBacklight(lit);
         }
         vTaskDelayUntil(&wake, pdMS_TO_TICKS(cfg::FRAME_MS));
     }
@@ -108,6 +115,7 @@ void applySettings() {
     behavior::post(EventType::SetEnabledMask, s.enabledMask);
     behavior::post(EventType::SetRandomInterval, s.randomIntervalS);
     behavior::post(EventType::SetRandom, s.randomMode);
+    behavior::post(EventType::SetWakeSeconds, s.wakeSeconds);
 }
 
 void restart() {
@@ -143,6 +151,7 @@ void loop() {
     net::loop(now);
     web::loop(now);
     settings::loop(now);
+    sleep_schedule::loop(now);
 
     if (factoryResetRequested) {
         settings::factoryReset();

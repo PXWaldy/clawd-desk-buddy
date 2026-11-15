@@ -85,10 +85,26 @@ constexpr uint8_t  WIFI_CONNECT_ATTEMPTS = 3;              // then fall back to 
 constexpr uint32_t WIFI_LOST_GRACE_MS    = 30 * 1000;      // before reconnecting by hand
 constexpr uint32_t WIFI_RETRY_PAUSE_MS   = 60 * 1000;      // retry while offline
 constexpr uint32_t IP_HINT_MS            = 6000;           // show IP after connecting
-constexpr char DEFAULT_TIMEZONE[] = "CET-1CEST,M3.5.0,M10.5.0/3";  // Europe/Berlin
+constexpr char DEFAULT_TIMEZONE_NAME[] = "Europe/Berlin";
+constexpr char DEFAULT_TIMEZONE[] = "CET-1CEST,M3.5.0,M10.5.0/3";  // POSIX rule for it
 constexpr char NTP_SERVER[]       = "pool.ntp.org";
 
 constexpr uint32_t SETTINGS_SAVE_DELAY_MS = 2000;  // collect changes before writing flash
+
+// Sleep
+constexpr uint32_t SLEEP_ANIMATION_MS  = 3500;   // sleepy eyes before the light goes off
+constexpr uint32_t WAKE_SLEEPY_MS      = 800;    // wake up: sleepy eyes ...
+constexpr uint32_t WAKE_SURPRISED_MS   = 900;    // ... then wide open, then normal
+constexpr uint16_t WAKE_SECONDS_DEFAULT = 30;    // tap while asleep: stay awake this long
+constexpr uint16_t WAKE_SECONDS_MIN = 5;
+constexpr uint16_t WAKE_SECONDS_MAX = 600;
+constexpr uint16_t SLEEP_FROM_DEFAULT_MIN = 22 * 60;   // 22:00
+constexpr uint16_t SLEEP_TO_DEFAULT_MIN   = 7 * 60;    // 07:00
+
+// Password protection
+constexpr uint32_t PASSWORD_PBKDF2_ROUNDS = 4000;
+constexpr size_t   PASSWORD_MIN_LENGTH = 4;
+constexpr uint32_t LOGIN_RETRY_PAUSE_MS = 1500;  // slows down password guessing
 
 // Touch gestures
 constexpr uint32_t TAP_MAX_MS        = 800;      // longer presses are no tap

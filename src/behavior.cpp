@@ -20,7 +20,17 @@ uint32_t nextRandomMs = 0;
 uint32_t reactionUntilMs = 0;           // 0 = no tap reaction running
 uint32_t colorBackground = cfg::COLOR_BACKGROUND;
 uint32_t colorEye = cfg::COLOR_EYE;
-bool screenOn = true;
+bool screenOn = true;                   // display switch in the web UI
+
+// Sleeping: the schedule or the display switch send the buddy to sleep. A tap
+// wakes it for a while.
+enum class Power : uint8_t { Awake, FallingAsleep, Asleep, Waking };
+Power power = Power::Awake;
+uint32_t powerSinceMs = 0;
+bool wakeSurprisedShown = false;
+bool scheduleSleep = false;
+uint32_t stayAwakeUntilMs = 0;          // 0 = no temporary wake up running
+uint32_t wakeSeconds = cfg::WAKE_SECONDS_DEFAULT;
 std::atomic<uint32_t> stateVersion{0};
 
 bool isEnabled(Expression e) { return enabled & (1u << (uint8_t)e); }
@@ -54,7 +64,72 @@ Expression randomEnabled(Expression notThis) {
     return n ? (Expression)candidates[random(n)] : notThis;
 }
 
+bool wantAsleep(uint32_t now) {
+    if (stayAwakeUntilMs != 0) {
+        if ((int32_t)(now - stayAwakeUntilMs) < 0) return false;
+        stayAwakeUntilMs = 0;
+    }
+    return scheduleSleep || !screenOn;
+}
+
+// Any interaction keeps the buddy awake for a while if it should be asleep.
+void stayAwake(uint32_t now) {
+    if (!scheduleSleep && screenOn) return;
+    stayAwakeUntilMs = now + wakeSeconds * 1000;
+    if (stayAwakeUntilMs == 0) stayAwakeUntilMs = 1;
+}
+
+void setPower(Power next, uint32_t now) {
+    power = next;
+    powerSinceMs = now;
+    stateVersion++;
+}
+
+void updatePower(uint32_t now) {
+    const bool sleepy = wantAsleep(now);
+    switch (power) {
+    case Power::Awake:
+        if (sleepy) {
+            // Going to sleep: sleepy eyes for a moment, then lights off.
+            reactionUntilMs = 0;
+            eyes::setExpression(Expression::Sleepy);
+            setPower(Power::FallingAsleep, now);
+        }
+        break;
+    case Power::FallingAsleep:
+        if (!sleepy) {
+            showBase(now);
+            setPower(Power::Awake, now);
+        } else if (now - powerSinceMs >= cfg::SLEEP_ANIMATION_MS) {
+            setPower(Power::Asleep, now);
+        }
+        break;
+    case Power::Asleep:
+        if (!sleepy) {
+            // Waking up: sleepy eyes, then wide open, then back to normal.
+            eyes::setExpression(Expression::Sleepy);
+            wakeSurprisedShown = false;
+            setPower(Power::Waking, now);
+        }
+        break;
+    case Power::Waking: {
+        const uint32_t t = now - powerSinceMs;
+        if (!wakeSurprisedShown && t >= cfg::WAKE_SLEEPY_MS) {
+            wakeSurprisedShown = true;
+            eyes::setExpression(Expression::Surprised);
+        }
+        if (t >= cfg::WAKE_SLEEPY_MS + cfg::WAKE_SURPRISED_MS) {
+            showBase(now);
+            setPower(Power::Awake, now);
+        }
+        break;
+    }
+    }
+}
+
 void onTap(uint32_t now) {
+    stayAwake(now);
+    if (power != Power::Awake) return;   // this tap only wakes the buddy up
     if (reactionUntilMs != 0) {
         // Tapped again while still happy: go to the next style.
         base = nextEnabled(base);
@@ -82,12 +157,14 @@ void handle(const behavior::Event& ev, uint32_t now) {
         if (ev.value >= 0 && ev.value < EXPRESSION_COUNT) {
             randomOn = false;
             base = (Expression)ev.value;
-            showBase(now);
+            stayAwake(now);
+            if (power == Power::Awake) showBase(now);
         }
         break;
     case EventType::SetRandom:
         randomOn = ev.value != 0;
         scheduleRandom(now);
+        if (randomOn) stayAwake(now);
         stateVersion++;
         break;
     case EventType::SetEnabledMask: {
@@ -96,7 +173,7 @@ void handle(const behavior::Event& ev, uint32_t now) {
         enabled = mask;
         if (!isEnabled(base)) {
             base = nextEnabled(base);
-            if (reactionUntilMs == 0) showBase(now);
+            if (reactionUntilMs == 0 && power == Power::Awake) showBase(now);
         }
         break;
     }
@@ -113,7 +190,15 @@ void handle(const behavior::Event& ev, uint32_t now) {
         break;
     case EventType::SetDisplayOn:
         screenOn = ev.value != 0;
-        display::setBacklight(screenOn);
+        stayAwakeUntilMs = 0;
+        break;
+    case EventType::SetSleepWanted:
+        scheduleSleep = ev.value != 0;
+        if (!scheduleSleep) stayAwakeUntilMs = 0;
+        break;
+    case EventType::SetWakeSeconds:
+        wakeSeconds = constrain((uint32_t)ev.value, (uint32_t)cfg::WAKE_SECONDS_MIN,
+                                (uint32_t)cfg::WAKE_SECONDS_MAX);
         break;
     case EventType::SetRandomInterval:
         randomIntervalSeconds = constrain((uint32_t)ev.value, cfg::RANDOM_INTERVAL_MIN_S,
@@ -142,6 +227,9 @@ void update(uint32_t now) {
     Event ev;
     while (xQueueReceive(queue, &ev, 0) == pdTRUE) handle(ev, now);
 
+    updatePower(now);
+    if (power != Power::Awake) return;
+
     if (reactionUntilMs != 0 && (int32_t)(now - reactionUntilMs) >= 0) showBase(now);
 
     if (randomOn && reactionUntilMs == 0 && (int32_t)(now - nextRandomMs) >= 0) {
@@ -154,7 +242,7 @@ Expression baseExpression() { return base; }
 bool randomMode() { return randomOn; }
 uint16_t enabledMask() { return enabled; }
 uint32_t randomIntervalS() { return randomIntervalSeconds; }
-bool displayOn() { return screenOn; }
+bool screenLit() { return power != Power::Asleep; }
 uint32_t version() { return stateVersion; }
 
 }  // namespace behavior
