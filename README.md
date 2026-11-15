@@ -119,11 +119,14 @@ Changes apply immediately and are saved on the device.
 
 | Section | What you can do |
 |---|---|
-| **Controls** | Display on or off, brightness, sleep schedule (from, until), how long a tap wakes the display, 24 h or AM/PM time format |
-| **Views** | Choose an expression or random mode. The checkbox in the corner of each view decides whether random mode and tapping use it. At least one stays enabled. |
-| **Speed** | How often random mode switches (5 seconds to 5 minutes) |
-| **Color** | Background and eye color with live preview, reset to defaults |
-| **Settings** | Device name, timezone, password, WiFi information, firmware update, reboot, WiFi reset |
+| **Header** | Connection state, device time and the appearance of the web UI (light, dark or system) |
+| **Controls** | Display on or off, brightness |
+| **Sleep** | Sleep schedule (from, until) and how long a tap wakes the display |
+| **Views** | Choose an expression or random mode. The checkbox in the corner of each view decides whether random mode and tapping use it. At least one stays enabled. The slider sets how often random mode switches (5 seconds to 5 minutes). |
+| **Colors** | Background and eye color with live preview, reset to defaults |
+| **Settings** | Device name, timezone, 24 hour or AM/PM time format, password, WiFi information, firmware update, reboot, WiFi reset |
+
+The accent color of the web UI follows the background color of the display.
 
 Good to know:
 
@@ -180,7 +183,7 @@ protect the web UI and the API.
 | The web flasher does not find the board | Use Chrome or Edge on a computer and a USB cable that carries data, not only power |
 | The setup page does not open by itself | Open `http://192.168.4.1` while connected to `Clawd-Setup` |
 | WiFi keeps dropping | The board has a small antenna. Move it closer to the router. The signal strength is shown in **Settings**. |
-| Sleep schedule does nothing | It needs the time from the internet. **Controls** shows the device time once it is known. |
+| Sleep schedule does nothing | It needs the time from the internet. The header of the web UI shows the device time once it is known. |
 
 ## Print and assembly
 
@@ -220,6 +223,7 @@ src/ota.*            Firmware update
 src/settings.*       Persistent settings (NVS)
 src/sleep.*          Sleep schedule
 web/index.html       Web UI, packed into the firmware at build time
+web/fonts/           Fonts of the web UI, packed into the firmware as well
 flasher/             Web flasher page
 ```
 
@@ -249,6 +253,9 @@ with the source **GitHub Actions**.
 - Web server: [ESPAsyncWebServer](https://github.com/ESP32Async/ESPAsyncWebServer)
   and [AsyncTCP](https://github.com/ESP32Async/AsyncTCP)
 - JSON: [ArduinoJson](https://arduinojson.org)
+- Fonts of the web UI: [Inter](https://rsms.me/inter/) and
+  [JetBrains Mono](https://www.jetbrains.com/lp/mono/), both under the SIL
+  Open Font License (see [web/fonts](web/fonts))
 - Web flasher: [ESP Web Tools](https://esphome.github.io/esp-web-tools/) and
   [Improv Wi-Fi](https://www.improv-wifi.com)
 - Inspiration: [clawd-mochi](https://github.com/yousifamanuel/clawd-mochi) for

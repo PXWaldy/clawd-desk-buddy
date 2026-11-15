@@ -297,6 +297,13 @@ void handleIndex(AsyncWebServerRequest* request) {
     request->send(response);
 }
 
+// The fonts never change within one firmware version, so browsers may keep them.
+void sendFont(AsyncWebServerRequest* request, const uint8_t* data, size_t length) {
+    AsyncWebServerResponse* response = request->beginResponse(200, "font/woff2", data, length);
+    response->addHeader("Cache-Control", "public, max-age=604800");
+    request->send(response);
+}
+
 void handleScan(AsyncWebServerRequest* request) {
     if (request->hasParam("start")) net::requestScan();
     net::ScanEntry entries[20];
@@ -423,6 +430,12 @@ void begin() {
 
     server.on("/", HTTP_GET, handleIndex);
     server.on("/index.html", HTTP_GET, handleIndex);
+    server.on("/fonts/inter.woff2", HTTP_GET, [](AsyncWebServerRequest* request) {
+        sendFont(request, WEB_FONT_INTER, WEB_FONT_INTER_LEN);
+    });
+    server.on("/fonts/mono.woff2", HTTP_GET, [](AsyncWebServerRequest* request) {
+        sendFont(request, WEB_FONT_MONO, WEB_FONT_MONO_LEN);
+    });
 
     server.on("/api/state", HTTP_GET, [](AsyncWebServerRequest* request) {
         request->send(200, "application/json", stateJson());

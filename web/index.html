@@ -3,124 +3,246 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="dark light">
 <title>Clawd Desk Buddy</title>
+<script>
+// Apply the saved appearance before the page is drawn, so it does not flash.
+(function () {
+  var choice = "system";
+  try { choice = localStorage.getItem("clawd-theme") || "system"; } catch (e) { /* storage blocked */ }
+  var dark = choice === "dark" || (choice === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+})();
+</script>
 <style>
+/* Design tokens in the style of shadcn/ui (zinc, dark) */
 :root {
-  --bg: #141312;
-  --card: #1f1d1b;
-  --card-2: #2a2725;
-  --line: #38342f;
-  --text: #f3efe9;
-  --muted: #a39b91;
-  --accent: #e8743b;
-  --accent-soft: rgba(232, 116, 59, .16);
-  --on-accent: #1b0d05;
-  --danger: #ff7a7d;
-  --radius: 18px;
+  --background: #09090b;
+  --card: #0c0c0f;
+  --foreground: #fafafa;
+  --muted: #18181b;
+  --muted-foreground: #a1a1aa;
+  --border: #27272a;
+  --input: #27272a;
+  --secondary: #27272a;
+  --destructive: #f87171;
+  --primary: #e05500;            /* follows the display background color */
+  --primary-foreground: #ffffff;
+  --ring: rgba(224, 85, 0, .45);
+  --accent-text: var(--primary);   /* accent used for small text */
+  color-scheme: dark;
+  --radius: 10px;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+/* Light theme: same tokens, other values */
+:root[data-theme=light] {
+  --background: #ffffff;
+  --card: #ffffff;
+  --foreground: #09090b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --border: #e4e4e7;
+  --input: #d4d4d8;
+  --secondary: #f4f4f5;
+  --destructive: #dc2626;
+  /* small accent text needs more contrast on white */
+  --accent-text: color-mix(in srgb, var(--primary) 78%, #000);
+  color-scheme: light;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html { -webkit-text-size-adjust: 100%; }
 body {
-  margin: 0; background: var(--bg); color: var(--text);
-  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  margin: 0; background: var(--background); color: var(--foreground); transition: background .2s, color .2s;
+  font: 14px/1.5 Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
 }
-main { max-width: 760px; margin: 0 auto; padding: 16px 16px 48px; }
-header { display: flex; align-items: center; gap: 14px; padding: 8px 4px 18px; }
-header canvas { width: 96px; height: 52px; border-radius: 12px; flex: none; }
-header h1 { font-size: 22px; margin: 0; letter-spacing: -.01em; }
-header p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
-.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); margin-right: 6px; }
-.dot.on { background: #46a758; }
-section {
-  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
-  padding: 18px; margin-bottom: 16px;
+main { max-width: 720px; margin: 0 auto; padding: 32px 16px 64px; display: grid; gap: 16px; }
+
+/* ---- header */
+header { display: flex; align-items: center; gap: 16px; padding: 0 4px 8px; }
+header canvas { width: 88px; height: 47px; border-radius: 8px; flex: none; }
+header h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -.02em; }
+header p { margin: 2px 0 0; color: var(--muted-foreground); font-size: 13px; }
+.status { margin-left: auto; text-align: right; display: grid; gap: 4px; font: 12px/1.3 var(--mono); white-space: nowrap; }
+.status .online { display: inline-flex; align-items: center; justify-content: flex-end; gap: 7px; font-weight: 500; }
+.status .online i { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
+.status .time { color: var(--muted-foreground); }
+/* compact appearance switch: text on wide screens, icons on phones */
+.toggle-group.theme { justify-self: end; height: 28px; padding: 2px; margin-top: 4px; font-family: Inter, system-ui, sans-serif; }
+.toggle-group.theme button { padding: 0 10px; font-size: 12px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; }
+.toggle-group.theme svg { width: 14px; height: 14px; display: none; }
+
+/* ---- section labels, written like code comments */
+.comment { margin: 14px 4px -6px; font: 500 13px/1 var(--mono); letter-spacing: .12em; color: var(--muted-foreground); }
+.comment::before { content: "/ "; color: var(--accent-text); }
+.comment:first-of-type { margin-top: 4px; }
+
+/* ---- card */
+.card { background: var(--card); border: 1px solid var(--border); border-radius: calc(var(--radius) + 4px); }
+.card-header { padding: 20px 24px 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.card-title { margin: 0; font-size: 14px; font-weight: 500; }
+.card-desc { margin: 4px 0 0; color: var(--muted-foreground); font-size: 13px; }
+.card-content { padding: 20px 24px 24px; display: grid; gap: 20px; }
+.card-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.sep { height: 1px; background: var(--border); border: 0; margin: 0; }
+
+/* ---- form elements */
+label, .label { font-size: 13px; font-weight: 500; }
+.hint { color: var(--muted-foreground); font-size: 13px; margin: 0; }
+.field { display: grid; gap: 8px; min-width: 0; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.row .text { display: grid; gap: 2px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.inline { display: flex; gap: 8px; }
+.inline > :first-child { flex: 1; min-width: 0; }
+
+.input, .select {
+  height: 40px; width: 100%; padding: 0 12px; font: inherit; color: var(--foreground);
+  background: transparent; border: 1px solid var(--input); border-radius: var(--radius); outline: 0;
+  transition: border-color .15s, box-shadow .15s;
 }
-h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 14px; }
-.row { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 48px; padding: 10px 0; }
-.row + .row { border-top: 1px solid var(--line); }
-.row > span { min-width: 0; }
-.row small, .note { color: var(--muted); font-size: 13px; }
-.note { margin: 10px 0 0; }
-.value { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-button, .btn {
-  font: inherit; color: var(--text); background: var(--card-2); border: 1px solid var(--line);
-  border-radius: 14px; min-height: 48px; padding: 0 18px; cursor: pointer;
+.input::placeholder { color: var(--muted-foreground); }
+.input:focus-visible, .select:focus-visible, .btn:focus-visible, .tile-main:focus-visible {
+  border-color: var(--primary); box-shadow: 0 0 0 3px var(--ring);
 }
-button:hover { border-color: var(--accent); }
-button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
-button.danger { color: var(--danger); }
-button:disabled { opacity: .5; cursor: default; }
-.buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
-input[type=text], input[type=password], input[type=time], input[type=number], select {
-  font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line);
-  border-radius: 12px; min-height: 48px; padding: 0 14px; width: 100%;
+.select {
+  appearance: none; -webkit-appearance: none; cursor: pointer; padding-right: 36px;
+  background: no-repeat right 12px center / 16px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
-input[type=range] { width: 100%; accent-color: var(--accent); height: 32px; margin: 6px 0 0; }
-input[type=color] {
-  width: 64px; height: 48px; padding: 0; border: 1px solid var(--line); border-radius: 12px;
-  background: none; cursor: pointer;
+.select option { background: var(--muted); color: var(--foreground); }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px;
+  font: inherit; font-weight: 500; color: var(--foreground); background: transparent; white-space: nowrap;
+  border: 1px solid var(--input); border-radius: var(--radius); cursor: pointer; outline: 0;
+  transition: background .15s, border-color .15s, box-shadow .15s;
 }
+.btn:hover { background: var(--muted); }
+.btn svg { width: 16px; height: 16px; }
+.btn-primary { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
+.btn-primary:hover { background: var(--primary); filter: brightness(1.1); }
+.btn-ghost-danger { border-color: transparent; color: var(--destructive); }
+.btn-ghost-danger:hover { background: rgba(248, 113, 113, .1); }
+
 /* switch */
-.switch { position: relative; width: 54px; height: 32px; flex: none; }
-.switch input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
-.switch i { position: absolute; inset: 0; border-radius: 16px; background: var(--card-2); border: 1px solid var(--line); transition: .15s; pointer-events: none; }
-.switch i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: var(--muted); transition: .15s; }
-.switch input:checked + i { background: var(--accent); border-color: var(--accent); }
-.switch input:checked + i::after { left: 25px; background: #fff; }
-.switch input:disabled + i { opacity: .5; }
-.switch input:focus-visible + i { outline: 2px solid var(--accent); outline-offset: 2px; }
-/* view buttons */
-.views { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
-.view { position: relative; }
-.view > button { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 12px; min-height: 0; width: 100%; }
-.view canvas { width: 100%; max-width: 128px; aspect-ratio: 320 / 172; border-radius: 9px; }
-.view span { font-size: 14px; }
-.view.active > button { border-color: var(--accent); background: var(--accent-soft); }
-.view.off canvas, .view.off span { opacity: .35; }
-/* small checkbox in the corner: switches the expression on or off */
-.check { position: absolute; top: -6px; right: -6px; width: 40px; height: 40px; display: grid; place-items: center; cursor: pointer; }
+.switch { position: relative; width: 44px; height: 24px; flex: none; }
+.switch input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.switch i { position: absolute; inset: 0; border-radius: 999px; background: var(--input); transition: background .15s; pointer-events: none; }
+.switch i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .3); transition: transform .15s; }
+.switch input:checked + i { background: var(--primary); }
+.switch input:checked + i::after { transform: translateX(20px); }
+.switch input:focus-visible + i { box-shadow: 0 0 0 3px var(--ring); }
+
+/* slider */
+.slider { --value: 50%; appearance: none; -webkit-appearance: none; width: 100%; height: 20px; margin: 0; background: transparent; cursor: pointer; outline: 0; }
+.slider::-webkit-slider-runnable-track { height: 6px; border-radius: 999px; background: linear-gradient(to right, var(--primary) var(--value), var(--secondary) var(--value)); }
+.slider::-moz-range-track { height: 6px; border-radius: 999px; background: var(--secondary); }
+.slider::-moz-range-progress { height: 6px; border-radius: 999px; background: var(--primary); }
+.slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -6px; border-radius: 50%; background: var(--background); border: 2px solid var(--primary); }
+.slider::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--background); border: 2px solid var(--primary); }
+.slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px var(--ring); }
+.value { color: var(--accent-text); font: 500 12px var(--mono); }
+
+/* toggle group */
+.toggle-group { display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; height: 40px; padding: 3px; gap: 2px; background: var(--muted); border-radius: var(--radius); }
+.toggle-group button { font: inherit; font-weight: 500; font-size: 13px; color: var(--muted-foreground); background: none; border: 0; border-radius: 7px; padding: 0 14px; cursor: pointer; white-space: nowrap; }
+.toggle-group button[aria-pressed=true] { background: var(--background); color: var(--foreground); box-shadow: 0 1px 2px rgba(0, 0, 0, .25); }
+
+/* ---- views */
+.views { display: grid; grid-template-columns: repeat(auto-fill, minmax(98px, 1fr)); gap: 10px; }
+.tile { position: relative; }
+.tile-main {
+  width: 100%; padding: 8px 8px 10px; display: grid; gap: 8px; justify-items: start; cursor: pointer; outline: 0;
+  font: inherit; color: var(--foreground); background: transparent; border: 1px solid var(--border); border-radius: var(--radius);
+  transition: border-color .15s, background .15s, box-shadow .15s;
+}
+.tile-main:hover { background: var(--muted); }
+.tile-main canvas, .tile-main .shuffle { width: 100%; aspect-ratio: 320 / 172; border-radius: 6px; display: block; }
+.tile-main .shuffle { background: var(--muted); display: grid; place-items: center; color: var(--muted-foreground); }
+.tile-main .shuffle svg { width: 22px; height: 22px; }
+.tile-main span { font-size: 13px; font-weight: 500; padding-left: 2px; }
+.tile.active .tile-main { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+.tile.off canvas { opacity: .3; filter: grayscale(1); }
+.tile.off span { color: var(--muted-foreground); }
+/* checkbox in the corner */
+.check { position: absolute; top: 2px; right: 2px; width: 36px; height: 36px; display: grid; place-items: center; cursor: pointer; }
 .check input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
-.check i { width: 24px; height: 24px; border-radius: 8px; background: var(--bg); border: 2px solid var(--line); display: grid; place-items: center; pointer-events: none; }
-.check i::after { content: ""; width: 11px; height: 6px; border-left: 3px solid var(--on-accent); border-bottom: 3px solid var(--on-accent); transform: rotate(-45deg) translate(1px, -1px); opacity: 0; }
-.check input:checked + i { background: var(--accent); border-color: var(--accent); }
-.check input:checked + i::after { opacity: 1; }
-.check input:disabled + i { opacity: .6; }
-.check input:focus-visible + i { outline: 2px solid var(--accent); outline-offset: 2px; }
-.time { display: flex; align-items: center; gap: 6px; }
-.time select { appearance: none; -webkit-appearance: none; padding: 0 4px; width: 58px; flex: none; text-align: center; text-align-last: center; cursor: pointer; }
-/* two buttons that work like a switch with labels */
-.seg { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); min-height: 48px; }
-.seg button { flex: 1; border: 0; border-radius: 8px; min-height: 38px; padding: 0 12px; background: none; color: var(--muted); white-space: nowrap; }
-.seg button[aria-pressed=true] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
-.field label.filebtn { display: inline-flex; align-items: center; position: relative; white-space: nowrap; font-size: inherit; color: var(--text); margin: 0; }
-.filebtn input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-.filebtn:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
-.filename { flex: 1; min-width: 0; align-self: center; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* Fixed grid, so nothing moves when the time format changes */
-.times { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 12px; padding: 12px 0; }
-.times .field { margin: 0; min-width: 0; }
-@media (max-width: 520px) { .times { grid-template-columns: 1fr; } }
-.view .dice { width: 100%; max-width: 128px; aspect-ratio: 320 / 172; border-radius: 9px; background: var(--bg); display: grid; place-items: center; font-size: 26px; }
-.colors { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
-.colors canvas { width: 180px; height: 97px; border-radius: 12px; }
-.colors label { display: flex; align-items: center; gap: 12px; min-height: 56px; }
-.networks { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
-.networks button { display: flex; justify-content: space-between; align-items: center; text-align: left; }
-.networks button.active { border-color: var(--accent); background: var(--accent-soft); }
-.field { margin-top: 12px; }
-.field label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 6px; }
-.inline { display: flex; gap: 10px; flex-wrap: wrap; }
-.inline input { flex: 1; min-width: 0; }
-progress { width: 100%; height: 10px; margin-top: 12px; accent-color: var(--accent); }
-code { background: var(--card-2); border-radius: 6px; padding: 1px 6px; font-size: 13px; }
-.status { margin-top: 12px; min-height: 22px; font-size: 14px; }
-.status.err { color: var(--danger); }
-.hidden { display: none !important; }
-dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; font-size: 15px; }
-dt { color: var(--muted); }
-dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+.check i { width: 18px; height: 18px; border-radius: 5px; background: rgba(9, 9, 11, .75); border: 1px solid rgba(250, 250, 250, .55); display: grid; place-items: center; pointer-events: none; }
+.check i svg { width: 12px; height: 12px; opacity: 0; color: #09090b; }
+.check input:checked + i { background: #fafafa; border-color: #fafafa; }
+.check input:checked + i svg { opacity: 1; }
+.check input:focus-visible + i { box-shadow: 0 0 0 3px var(--ring); }
+
+/* ---- colors */
+.colors { display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: center; }
+.colors canvas { width: 100%; border-radius: 8px; display: block; }
+.swatch { display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px 0 6px; border: 1px solid var(--input); border-radius: var(--radius); cursor: pointer; position: relative; }
+.swatch input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.swatch b { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border); flex: none; }
+.swatch span { font-weight: 500; }
+.swatch code { margin-left: auto; color: var(--muted-foreground); font: 12px var(--mono); text-transform: uppercase; }
+
+/* ---- info list */
+dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; font-size: 13px; }
+dt { color: var(--muted-foreground); }
+dd { margin: 0; text-align: right; font: 12px var(--mono); overflow-wrap: anywhere; }
+.pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--secondary); font: 500 11px var(--mono); }
+.pill.on { background: var(--primary); color: var(--primary-foreground); }
+.tile-main span { font-family: var(--mono); }
+header p { font-family: var(--mono); }
+.file { display: flex; align-items: center; gap: 12px; padding: 6px 6px 6px 12px; border: 1px dashed var(--input); border-radius: var(--radius); }
+.file span { flex: 1; min-width: 0; color: var(--muted-foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file .btn { height: 32px; padding: 0 12px; font-size: 13px; }
+
+@media (max-width: 560px) {
+  main { padding-top: 20px; }
+  .card-header { padding: 16px 16px 0; }
+  .card-content { padding: 16px; }
+  .card-footer { padding: 12px 16px; }
+  .grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid-3 > :last-child { grid-column: 1 / -1; }
+  .grid-2 { grid-template-columns: 1fr; }
+  #formatGroup { display: grid; }
+  .colors { grid-template-columns: 1fr; }
+  .colors canvas { max-width: 220px; }
+  .status .extra { display: none; }
+  .toggle-group.theme { height: 32px; }
+  .toggle-group.theme button { padding: 0 9px; }
+  .toggle-group.theme svg { display: block; }
+  .toggle-group.theme button span { display: none; }
+  header { align-items: flex-start; }
+  header { gap: 12px; }
+  .views { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  header canvas { width: 64px; height: 34px; }
+  header h1 { font-size: 17px; white-space: nowrap; }
+  /* 16 px keeps iOS from zooming into fields */
+  .input, .select { font-size: 16px; }
+}
+
+/* ---- additions for the live UI */
+@font-face { font-family: Inter; src: url("/fonts/inter.woff2") format("woff2"); font-weight: 400 600; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("/fonts/mono.woff2") format("woff2"); font-weight: 400 500; font-display: swap; }
+.status .online i.off { background: var(--destructive); }
+.note { color: var(--muted-foreground); font-size: 13px; margin: 0; min-height: 0; }
+.note.err { color: var(--destructive); }
+.note:empty { display: none; }
+.tile-main:disabled { cursor: default; }
+.tile-main:disabled:hover { background: transparent; }
+.check input:disabled { cursor: default; }
+.check input:disabled + i { opacity: .55; }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn-file { position: relative; }
+.btn-file input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.btn-file:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px var(--ring); }
+progress { width: 100%; height: 6px; accent-color: var(--primary); }
+.networks { display: grid; gap: 6px; }
+.networks button { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; height: 40px; padding: 0 12px; font: inherit; color: var(--foreground); background: transparent; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; text-align: left; }
+.networks button:hover { background: var(--muted); }
+.networks button.active { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+.networks small { color: var(--muted-foreground); font: 12px var(--mono); white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -129,145 +251,168 @@ dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
     <canvas id="face" width="320" height="172"></canvas>
     <div>
       <h1>Clawd Desk Buddy</h1>
-      <p><span class="dot" id="linkDot"></span><span id="linkText">Connecting…</span></p>
+      <p id="address">clawd.local</p>
+    </div>
+    <div class="status">
+      <span class="online"><i id="linkDot" class="off"></i><span id="linkText">Connecting</span><span class="extra" id="linkIp"></span></span>
+      <span class="time" id="clock"></span>
+      <div class="toggle-group theme" id="themeGroup" role="group" aria-label="Appearance">
+        <button aria-pressed="false" data-theme-choice="light" aria-label="Light"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg><span>Light</span></button>
+        <button aria-pressed="false" data-theme-choice="dark" aria-label="Dark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg><span>Dark</span></button>
+        <button aria-pressed="false" data-theme-choice="system" aria-label="System"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span>System</span></button>
+      </div>
     </div>
   </header>
 
-  <section id="login" class="hidden">
-    <h2>Login</h2>
-    <div class="field" style="margin-top:0">
-      <label for="loginPass">Password</label>
-      <div class="inline">
-        <input type="password" id="loginPass" maxlength="64" autocomplete="current-password">
-        <button class="primary" id="loginButton">Log in</button>
+  <!-- Login: shown instead of everything else while a password is required -->
+  <div id="login" hidden style="display:grid; gap:16px">
+    <h2 class="comment">login</h2>
+    <section class="card">
+      <div class="card-content">
+        <div class="field">
+          <label for="loginPass">Password</label>
+          <div class="inline"><input class="input" type="password" id="loginPass" maxlength="64" autocomplete="current-password"><button class="btn btn-primary" id="loginButton">Log in</button></div>
+          <p class="note err" id="loginStatus"></p>
+        </div>
+        <p class="hint">Forgot the password? Hold a finger on the display for 15 seconds to reset the device to factory settings.</p>
+      </div>
+    </section>
+  </div>
+
+  <div id="app" style="display:grid; gap:16px">
+  <!-- WiFi setup: only while the setup network is open -->
+  <div id="setup" hidden style="display:grid; gap:16px">
+    <h2 class="comment">wifi setup</h2>
+    <section class="card">
+      <div class="card-header"><div><h3 class="card-title">Choose your home network</h3><p class="card-desc">Clawd connects to it and is then reachable at <span id="setupHost">http://clawd.local</span>.</p></div></div>
+      <div class="card-content">
+        <div class="networks" id="networks"></div>
+        <div class="grid-2">
+          <div class="field"><label for="ssid">Network name</label><input class="input" id="ssid" maxlength="32" autocomplete="off" autocapitalize="none" spellcheck="false"></div>
+          <div class="field"><label for="pass">Password</label><input class="input" type="password" id="pass" maxlength="64" autocomplete="off"></div>
+        </div>
+        <p class="note" id="setupStatus"></p>
+      </div>
+      <div class="card-footer">
+        <button class="btn btn-primary" id="connect">Connect</button>
+        <button class="btn" id="rescan">Search again</button>
+      </div>
+    </section>
+  </div>
+
+  <h2 class="comment">controls</h2>
+  <section class="card">
+    <div class="card-header">
+      <div><h3 class="card-title">Display</h3><p class="card-desc">Switch the screen and set how bright it is.</p></div>
+      <label class="switch"><input type="checkbox" id="displayOn" aria-label="Display"><i></i></label>
+    </div>
+    <div class="card-content">
+      <div class="field">
+        <div class="row"><label for="brightness">Brightness</label><span class="value" id="brightnessValue"></span></div>
+        <input class="slider" type="range" id="brightness" min="5" max="100" step="1">
       </div>
     </div>
-    <div class="status" id="loginStatus"></div>
-    <p class="note">Forgot the password? Hold a finger on the display for 15 seconds to reset the device to factory settings.</p>
   </section>
 
-  <div id="app">
-  <!-- WiFi setup: shown first while the setup access point is open -->
-  <section id="setup" class="hidden">
-    <h2>WiFi setup</h2>
-    <p class="note" style="margin-top:0">Choose your home network. Clawd connects to it and is then reachable at <b id="setupHost">http://clawd.local</b>.</p>
-    <div class="networks" id="networks"></div>
-    <button id="rescan">Search again</button>
-    <div class="field">
-      <label for="ssid">Network name</label>
-      <input type="text" id="ssid" maxlength="32" autocomplete="off" autocapitalize="none" spellcheck="false">
-    </div>
-    <div class="field">
-      <label for="pass">Password</label>
-      <input type="password" id="pass" maxlength="64" autocomplete="off">
-    </div>
-    <div class="buttons"><button class="primary" id="connect">Connect</button></div>
-    <div class="status" id="setupStatus"></div>
-  </section>
-
-  <section>
-    <h2>Controls</h2>
-    <div class="row">
-      <span>Display</span>
-      <label class="switch"><input type="checkbox" id="displayOn"><i></i></label>
-    </div>
-    <div class="row" style="display:block; padding-top:12px">
-      <div style="display:flex; justify-content:space-between"><span>Brightness</span><span class="value" id="brightnessValue"></span></div>
-      <input type="range" id="brightness" min="5" max="100" step="1">
-    </div>
-    <div class="row">
-      <span>Sleep schedule<br><small id="clock"></small></span>
+  <h2 class="comment">sleep</h2>
+  <section class="card">
+    <div class="card-header">
+      <div><h3 class="card-title">Sleep schedule</h3><p class="card-desc">The display goes dark at night. A tap wakes Clawd for a moment.</p></div>
       <label class="switch"><input type="checkbox" id="sleepEnabled" aria-label="Sleep schedule"><i></i></label>
     </div>
-    <div class="times">
-      <div class="field"><label id="sleepFromLabel">Sleep from</label><div class="time" id="sleepFrom" role="group" aria-labelledby="sleepFromLabel"></div></div>
-      <div class="field"><label id="sleepToLabel">until</label><div class="time" id="sleepTo" role="group" aria-labelledby="sleepToLabel"></div></div>
-      <div class="field"><label for="wakeSeconds">Tap wakes for (seconds)</label><input type="number" id="wakeSeconds" min="5" max="600" step="5" inputmode="numeric"></div>
-      <div class="field"><label id="clockLabel">Time format</label>
-        <div class="seg" role="group" aria-labelledby="clockLabel">
-          <button id="clock24" aria-pressed="true">24 h</button>
-          <button id="clock12" aria-pressed="false">AM/PM</button>
+    <div class="card-content">
+      <div class="grid-3">
+        <div class="field"><label for="sleepFrom">Sleep from</label><select class="select" id="sleepFrom"></select></div>
+        <div class="field"><label for="sleepTo">Until</label><select class="select" id="sleepTo"></select></div>
+        <div class="field"><label for="wakeSeconds">Tap wakes for</label><select class="select" id="wakeSeconds"></select></div>
+      </div>
+    </div>
+  </section>
+
+  <h2 class="comment">views</h2>
+  <section class="card">
+    <div class="card-header"><div><p class="card-desc" style="margin:0">Pick an expression or let Clawd choose. Unchecked ones are skipped by random mode and by tapping.</p></div></div>
+    <div class="card-content">
+      <div class="views" id="views"></div>
+      <hr class="sep">
+      <div class="field">
+        <div class="row"><label for="interval">Random mode switches every</label><span class="value" id="intervalValue"></span></div>
+        <input class="slider" type="range" id="interval" min="5" max="300" step="5">
+      </div>
+    </div>
+  </section>
+
+  <h2 class="comment">colors</h2>
+  <section class="card">
+    <div class="card-header"><div><p class="card-desc" style="margin:0">The display shows colors a little paler than your screen. The default background is tuned to look like Claude orange on the display.</p></div></div>
+    <div class="card-content">
+      <div class="colors">
+        <canvas id="preview" width="320" height="172"></canvas>
+        <div style="display:grid; gap:12px">
+          <label class="swatch"><input type="color" id="bg" aria-label="Background color"><b id="bgChip"></b><span>Background</span><code id="bgHex"></code></label>
+          <label class="swatch"><input type="color" id="eye" aria-label="Eye color"><b id="eyeChip"></b><span>Eyes</span><code id="eyeHex"></code></label>
         </div>
       </div>
     </div>
-    <p class="note" style="margin-top:0">While asleep the display is off. A tap wakes Clawd for the time set here.</p>
+    <div class="card-footer">
+      <button class="btn" id="colorReset">Reset to defaults</button>
+      <button class="btn" id="colorOriginal">Original Claude orange</button>
+    </div>
   </section>
 
-  <section>
-    <h2>Views</h2>
-    <div class="views" id="views"></div>
-    <p class="note">Use the checkbox in the corner to switch an expression on or off. Only checked ones are used by random mode and by tapping the figure: one tap makes Clawd happy, a second tap while it is happy switches to the next view.</p>
-  </section>
-
-  <section>
-    <h2>Speed</h2>
-    <div style="display:flex; justify-content:space-between"><span>Random mode switches every</span><span class="value" id="intervalValue"></span></div>
-    <input type="range" id="interval" min="5" max="300" step="5">
-  </section>
-
-  <section>
-    <h2>Color</h2>
-    <div class="colors">
-      <canvas id="preview" width="320" height="172"></canvas>
-      <div>
-        <label><input type="color" id="bg"> Background</label>
-        <label><input type="color" id="eye"> Eyes</label>
+  <h2 class="comment">settings</h2>
+  <section class="card">
+    <div class="card-content">
+      <div class="field">
+        <label for="hostname">Device name</label>
+        <div class="inline"><input class="input" id="hostname" maxlength="32" autocomplete="off" autocapitalize="none" spellcheck="false"><button class="btn" id="hostnameSave">Save</button></div>
+        <p class="note" id="hostnameStatus"></p>
+      </div>
+      <div class="grid-2">
+        <div class="field"><label for="timezone">Timezone</label><select class="select" id="timezone"></select></div>
+        <div class="field"><span class="label" id="formatLabel">Time format</span>
+          <div class="toggle-group" id="formatGroup" role="group" aria-labelledby="formatLabel">
+            <button id="clock24" aria-pressed="true">24-hour</button>
+            <button id="clock12" aria-pressed="false">AM / PM</button>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label for="newPass">Password protection <span class="pill" id="passPill">off</span></label>
+        <div class="inline"><input class="input" type="password" id="newPass" maxlength="64" autocomplete="new-password" placeholder="New password"><button class="btn" id="passSave">Set password</button></div>
+        <p class="note" id="passStatus"></p>
+        <div class="inline" id="passOn" hidden>
+          <p class="hint" style="align-self:center">The web UI asks for the password on every new device.</p>
+          <button class="btn" id="logout">Log out</button>
+          <button class="btn" id="passRemove">Remove password</button>
+        </div>
+      </div>
+      <hr class="sep">
+      <dl>
+        <dt>WiFi</dt><dd id="infoSsid">–</dd>
+        <dt>Signal</dt><dd id="infoRssi">–</dd>
+        <dt>IP address</dt><dd id="infoIp">–</dd>
+        <dt>Firmware</dt><dd id="infoVersion">–</dd>
+      </dl>
+      <hr class="sep">
+      <div class="field">
+        <span class="label">Firmware update</span>
+        <div class="file">
+          <span id="firmwareName">No file chosen</span>
+          <label class="btn btn-file"><input type="file" id="firmwareFile" accept=".bin">Choose file</label>
+          <button class="btn btn-primary" id="firmwareUpload">Upload</button>
+        </div>
+        <progress id="firmwareProgress" hidden max="100" value="0"></progress>
+        <p class="note" id="firmwareStatus"></p>
+        <p class="hint">Use a .bin file from the releases page. Both the -ota.bin and the -factory.bin file work. Your settings are kept.</p>
       </div>
     </div>
-    <div class="buttons">
-      <button id="colorReset">Reset to defaults</button>
-      <button id="colorOriginal">Original Claude orange</button>
-    </div>
-    <p class="note">The small display shows colors paler than your phone or monitor. The default background is tuned to look like Claude orange on the display itself.</p>
-  </section>
-
-  <section>
-    <h2>Settings</h2>
-    <div class="field" style="margin-top:0">
-      <label for="hostname">Device name</label>
-      <div class="inline">
-        <input type="text" id="hostname" maxlength="32" autocomplete="off" autocapitalize="none" spellcheck="false">
-        <button id="hostnameSave">Save</button>
-      </div>
-      <div class="status" id="hostnameStatus"></div>
-    </div>
-    <div class="field">
-      <label for="timezone">Timezone</label>
-      <select id="timezone"></select>
-    </div>
-    <div class="field">
-      <label for="newPass">Password protection <span id="passState"></span></label>
-      <div class="inline">
-        <input type="password" id="newPass" maxlength="64" autocomplete="new-password" placeholder="New password">
-        <button id="passSave">Set</button>
-      </div>
-      <div class="status" id="passStatus"></div>
-    </div>
-    <div class="buttons hidden" id="passButtons" style="margin:0 0 18px">
-      <button id="passRemove">Remove password</button>
-      <button id="logout">Log out</button>
-    </div>
-    <dl>
-      <dt>WiFi</dt><dd id="infoSsid">–</dd>
-      <dt>Signal</dt><dd id="infoRssi">–</dd>
-      <dt>IP address</dt><dd id="infoIp">–</dd>
-      <dt>Address</dt><dd id="infoHost">–</dd>
-      <dt>Firmware</dt><dd id="infoVersion">–</dd>
-    </dl>
-    <div class="field" style="margin-top:18px">
-      <label for="firmwareFile">Firmware update</label>
-      <div class="inline">
-        <label class="btn filebtn"><input type="file" id="firmwareFile" accept=".bin">Choose file</label>
-        <span class="filename" id="firmwareName">No file chosen</span>
-        <button id="firmwareUpload">Upload</button>
-      </div>
-      <progress id="firmwareProgress" class="hidden" max="100" value="0"></progress>
-      <div class="status" id="firmwareStatus"></div>
-      <p class="note" style="margin-top:0">Use a <code>.bin</code> file from the releases page. Both the <code>-ota.bin</code> and the <code>-factory.bin</code> file work. Your settings are kept.</p>
-    </div>
-    <div class="buttons">
-      <button id="reboot">Reboot</button>
-      <button class="danger" id="wifiReset">Reset WiFi</button>
+    <div class="card-footer">
+      <button class="btn" id="reboot">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        Reboot
+      </button>
+      <button class="btn btn-ghost-danger" id="wifiReset" style="margin-left:auto">Reset WiFi</button>
     </div>
   </section>
   </div>
@@ -365,18 +510,42 @@ function drawFace(canvas, id, bg, eye) {
   }
 }
 
+// ------------------------------------------------------------------ theme --
+// Appearance: light, dark or whatever the system uses. Kept per browser.
+const systemDark = matchMedia("(prefers-color-scheme: dark)");
+let themeChoice = "system";
+try { themeChoice = localStorage.getItem("clawd-theme") || "system"; } catch (e) { /* storage blocked */ }
+
+function applyTheme() {
+  const dark = themeChoice === "dark" || (themeChoice === "system" && systemDark.matches);
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  document.querySelectorAll("#themeGroup button").forEach(b =>
+    b.setAttribute("aria-pressed", b.dataset.themeChoice === themeChoice));
+  if (state) setAccent($("bg").value);
+}
+document.querySelectorAll("#themeGroup button").forEach(button => {
+  button.onclick = () => {
+    themeChoice = button.dataset.themeChoice;
+    try { localStorage.setItem("clawd-theme", themeChoice); } catch (e) { /* storage blocked */ }
+    applyTheme();
+  };
+});
+systemDark.addEventListener("change", applyTheme);
+
 // The web UI takes its accent color from the background color of the display.
 function setAccent(hex) {
   let [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
   const luma = () => (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-  // Very dark colors would vanish on the dark page, so lighten them.
-  for (let i = 0; i < 12 && luma() < 0.22; i++) {
-    r = Math.round(r + (255 - r) * 0.2); g = Math.round(g + (255 - g) * 0.2); b = Math.round(b + (255 - b) * 0.2);
+  const dark = document.documentElement.dataset.theme !== "light";
+  // Colors close to the page background would vanish, so move them away from it.
+  for (let i = 0; i < 12 && (dark ? luma() < 0.22 : luma() > 0.72); i++) {
+    const target = dark ? 255 : 0;
+    r = Math.round(r + (target - r) * 0.2); g = Math.round(g + (target - g) * 0.2); b = Math.round(b + (target - b) * 0.2);
   }
   const root = document.documentElement.style;
-  root.setProperty("--accent", `rgb(${r}, ${g}, ${b})`);
-  root.setProperty("--accent-soft", `rgba(${r}, ${g}, ${b}, .16)`);
-  root.setProperty("--on-accent", luma() > 0.5 ? "#1b0d05" : "#ffffff");
+  root.setProperty("--primary", `rgb(${r}, ${g}, ${b})`);
+  root.setProperty("--ring", `rgba(${r}, ${g}, ${b}, .45)`);
+  root.setProperty("--primary-foreground", luma() > 0.55 ? "#09090b" : "#ffffff");
 }
 
 // -------------------------------------------------------------- transport --
@@ -406,14 +575,14 @@ async function getJson(url) {
 }
 
 function showLogin(show) {
-  $("login").classList.toggle("hidden", !show);
-  $("app").classList.toggle("hidden", show);
+  $("login").hidden = !show;
+  $("app").hidden = show;
   if (show) $("loginPass").focus();
 }
 
 function setLink(online) {
-  $("linkDot").classList.toggle("on", online);
-  $("linkText").textContent = online ? "Connected" : "Connecting…";
+  $("linkDot").classList.toggle("off", !online);
+  $("linkText").textContent = online ? "Online" : "Offline";
 }
 
 function connectSocket() {
@@ -431,10 +600,12 @@ function connectSocket() {
 }
 
 // ------------------------------------------------------------------ render --
+const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+const SHUFFLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 14 4 4-4 4"/><path d="m18 2 4 4-4 4"/><path d="M2 18h1.97a4 4 0 0 0 3.3-1.7l5.46-8.6a4 4 0 0 1 3.3-1.7H22"/><path d="M2 6h1.97a4 4 0 0 1 3.6 2.2"/><path d="M22 18h-6.04a4 4 0 0 1-3.3-1.8l-.36-.5"/></svg>';
 let builtFor = "";
 
 function build() {
-  // The lists only change when an expression is switched on or off.
+  // The tiles only change when an expression is switched on or off.
   const key = state.expressions.map(e => e.id + (e.enabled ? 1 : 0)).join(",");
   if (key === builtFor) return;
   builtFor = key;
@@ -444,22 +615,15 @@ function build() {
   const enabledCount = state.expressions.filter(e => e.enabled).length;
   state.expressions.forEach(e => {
     const tile = document.createElement("div");
-    tile.className = "view" + (e.enabled ? "" : " off");
+    tile.className = "tile" + (e.enabled ? "" : " off");
     tile.dataset.id = e.id;
-
-    const button = document.createElement("button");
-    const canvas = document.createElement("canvas");
-    canvas.width = 320; canvas.height = 172;
-    const label = document.createElement("span");
-    label.textContent = e.name;
-    button.append(canvas, label);
-    button.disabled = !e.enabled;
-    button.onclick = () => send({ expression: e.id });
-
-    const check = document.createElement("label");
-    check.className = "check";
-    const input = document.createElement("input");
-    input.type = "checkbox";
+    tile.innerHTML = '<button class="tile-main"><canvas width="320" height="172"></canvas><span></span></button>'
+      + '<label class="check"><input type="checkbox"><i>' + CHECK + '</i></label>';
+    tile.querySelector("span").textContent = e.name;
+    const main = tile.querySelector(".tile-main");
+    main.disabled = !e.enabled;
+    main.onclick = () => send({ expression: e.id });
+    const input = tile.querySelector("input");
     input.checked = e.enabled;
     input.setAttribute("aria-label", "Use " + e.name);
     // The last enabled expression cannot be switched off.
@@ -471,34 +635,77 @@ function build() {
       if (ids.length === 0) { input.checked = true; return; }
       send({ enabled: ids });
     };
-    check.append(input, document.createElement("i"));
-
-    tile.append(button, check);
     views.append(tile);
   });
   const random = document.createElement("div");
-  random.className = "view";
+  random.className = "tile";
   random.dataset.id = "random";
-  const randomButton = document.createElement("button");
-  randomButton.innerHTML = '<div class="dice" aria-hidden="true">🎲</div><span>Random</span>';
-  randomButton.onclick = () => send({ random: true });
-  random.append(randomButton);
+  random.innerHTML = '<button class="tile-main"><div class="shuffle">' + SHUFFLE + '</div><span>Random</span></button>';
+  random.querySelector(".tile-main").onclick = () => send({ random: true });
   views.append(random);
 }
 
 function paint() {
   const bg = $("bg").value, eye = $("eye").value;
   setAccent(bg);
-  document.querySelectorAll(".view canvas").forEach(canvas => {
-    drawFace(canvas, canvas.closest(".view").dataset.id, bg, eye);
+  document.querySelectorAll(".tile canvas").forEach(canvas => {
+    drawFace(canvas, canvas.closest(".tile").dataset.id, bg, eye);
   });
   const shown = state.random ? "normal" : state.expression;
   drawFace($("preview"), shown, bg, eye);
   drawFace($("face"), shown, bg, eye);
+  $("bgChip").style.background = bg; $("eyeChip").style.background = eye;
+  $("bgHex").textContent = bg; $("eyeHex").textContent = eye;
+}
+
+const two = n => String(n).padStart(2, "0");
+
+// "22:00" as text in the chosen time format
+function showTime(clock) {
+  if (!state || state.clock_24h) return clock;
+  const [h, m] = clock.split(":").map(Number);
+  return (h % 12 || 12) + ":" + two(m) + (h < 12 ? " AM" : " PM");
 }
 
 function seconds(value) {
-  return value < 60 ? value + " s" : Math.floor(value / 60) + " min" + (value % 60 ? " " + value % 60 + " s" : "");
+  if (value < 60) return value + " s";
+  return Math.floor(value / 60) + " min" + (value % 60 ? " " + value % 60 + " s" : "");
+}
+
+function duration(value) {
+  if (value < 60) return value + " seconds";
+  const minutes = value / 60;
+  return Number.isInteger(minutes) ? minutes + (minutes === 1 ? " minute" : " minutes") : value + " seconds";
+}
+
+// Fills a list with times in steps of 15 minutes, plus the current value.
+function fillTimes(id, current) {
+  const select = $(id);
+  const format = state.clock_24h ? "24" : "12";
+  if (select.dataset.format !== format || ![...select.options].some(o => o.value === current)) {
+    select.dataset.format = format;
+    const values = new Set([current]);
+    for (let t = 0; t < 24 * 60; t += 15) values.add(two(Math.floor(t / 60)) + ":" + two(t % 60));
+    select.textContent = "";
+    [...values].sort().forEach(v => select.append(new Option(showTime(v), v)));
+  }
+  select.value = current;
+}
+
+function fillWake(current) {
+  const select = $("wakeSeconds");
+  if (![...select.options].some(o => +o.value === current)) {
+    const values = new Set([10, 30, 60, 120, 300, 600, current]);
+    select.textContent = "";
+    [...values].sort((a, b) => a - b).forEach(v => select.append(new Option(duration(v), v)));
+  }
+  select.value = current;
+}
+
+function updateSlider(id, out, text) {
+  const input = $(id);
+  input.style.setProperty("--value", (input.value - input.min) / (input.max - input.min) * 100 + "%");
+  $(out).textContent = text(+input.value);
 }
 
 function applyState(next) {
@@ -512,36 +719,48 @@ function applyState(next) {
     $("bg").value = state.bg;
     $("eye").value = state.eye;
     $("sleepEnabled").checked = state.sleep_enabled;
-    for (const [id, value] of [["wakeSeconds", state.wake_seconds], ["timezone", state.timezone]]) {
-      if (document.activeElement !== $(id)) $(id).value = value;
-    }
-    for (const [id, value] of [["sleepFrom", state.sleep_from], ["sleepTo", state.sleep_to]]) {
-      if (!$(id).contains(document.activeElement)) setTime(id, value);
-    }
+    if (document.activeElement !== $("sleepFrom")) fillTimes("sleepFrom", state.sleep_from);
+    if (document.activeElement !== $("sleepTo")) fillTimes("sleepTo", state.sleep_to);
+    if (document.activeElement !== $("wakeSeconds")) fillWake(state.wake_seconds);
+    if (document.activeElement !== $("timezone")) $("timezone").value = state.timezone;
     $("clock24").setAttribute("aria-pressed", state.clock_24h);
     $("clock12").setAttribute("aria-pressed", !state.clock_24h);
   }
-  $("clock").textContent = state.time
-    ? "Device time " + showTime(state.time) + (state.asleep ? ", asleep" : "")
-    : "Waiting for the time from the internet";
-  $("passState").textContent = state.password_enabled ? "(on)" : "(off)";
-  $("passButtons").classList.toggle("hidden", !state.password_enabled);
-  $("passSave").textContent = state.password_enabled ? "Change" : "Set";
-  $("brightnessValue").textContent = $("brightness").value + " %";
-  $("intervalValue").textContent = seconds(+$("interval").value);
-  document.querySelectorAll(".view").forEach(tile => {
+  updateSlider("brightness", "brightnessValue", v => v + " %");
+  updateSlider("interval", "intervalValue", seconds);
+  document.querySelectorAll(".tile").forEach(tile => {
     const id = tile.dataset.id;
     tile.classList.toggle("active", state.random ? id === "random" : id === state.expression);
   });
-  if (document.activeElement !== $("hostname")) $("hostname").value = state.wifi.hostname;
+
   const w = state.wifi;
+  $("address").textContent = w.hostname + ".local";
+  $("linkIp").textContent = w.ip ? " · " + w.ip : "";
+  $("clock").innerHTML = "";
+  if (state.time) {
+    const label = document.createElement("span");
+    label.className = "extra";
+    label.textContent = "Device time ";
+    const zone = document.createElement("span");
+    zone.className = "extra";
+    zone.textContent = " · " + state.timezone.replace(/_/g, " ");
+    $("clock").append(label, showTime(state.time) + (state.asleep ? " (asleep)" : ""), zone);
+  } else {
+    $("clock").textContent = "Waiting for the time";
+  }
+
+  if (document.activeElement !== $("hostname")) $("hostname").value = w.hostname;
+  if (!$("hostnameStatus").dataset.touched) $("hostnameStatus").textContent = "Reachable at http://" + w.hostname + ".local";
+  $("passPill").textContent = state.password_enabled ? "on" : "off";
+  $("passPill").classList.toggle("on", state.password_enabled);
+  $("passSave").textContent = state.password_enabled ? "Change password" : "Set password";
+  $("passOn").hidden = !state.password_enabled;
   $("infoSsid").textContent = w.connected ? w.ssid : (w.setup ? "Setup mode" : "Not connected");
   $("infoRssi").textContent = w.connected ? w.rssi + " dBm" : "–";
   $("infoIp").textContent = w.ip || "–";
-  $("infoHost").textContent = "http://" + w.hostname + ".local";
   $("infoVersion").textContent = state.version;
   $("setupHost").textContent = "http://" + w.hostname + ".local";
-  $("setup").classList.toggle("hidden", !w.setup);
+  $("setup").hidden = !w.setup;
   if (w.setup && !scanStarted) startScan();
   paint();
 }
@@ -549,11 +768,11 @@ function applyState(next) {
 // ---------------------------------------------------------------- controls --
 $("displayOn").onchange = e => send({ display_on: e.target.checked });
 $("brightness").oninput = e => {
-  $("brightnessValue").textContent = e.target.value + " %";
+  updateSlider("brightness", "brightnessValue", v => v + " %");
   send({ brightness: +e.target.value });
 };
 $("interval").oninput = e => {
-  $("intervalValue").textContent = seconds(+e.target.value);
+  updateSlider("interval", "intervalValue", seconds);
   send({ interval: +e.target.value });
 };
 $("bg").oninput = e => { paint(); send({ bg: e.target.value }); };
@@ -562,63 +781,12 @@ $("colorReset").onclick = () => { busyUntil = 0; post("/api/colors/reset"); };
 $("colorOriginal").onclick = () => { busyUntil = 0; post("/api/state", { bg: state.defaults.claude_orange }); };
 
 $("sleepEnabled").onchange = e => send({ sleep_enabled: e.target.checked });
-// Time fields are built from plain lists, so they look the same in every
-// browser and follow the time format chosen here (not the browser language).
-const two = n => String(n).padStart(2, "0");
-
-function showTime(clock) {
-  if (!state || state.clock_24h) return clock;
-  const [h, m] = clock.split(":").map(Number);
-  return (h % 12 || 12) + ":" + two(m) + (h < 12 ? " AM" : " PM");
-}
-
-function setTime(id, clock) {
-  const box = $(id);
-  const [h, m] = clock.split(":").map(Number);
-  const use24 = !state || state.clock_24h;
-  const mode = (use24 ? "24" : "12") + ":" + m;
-  if (box.dataset.mode !== mode) {
-    // (Re)build the lists: hours, minutes in steps of 5, and AM/PM if needed.
-    box.dataset.mode = mode;
-    box.textContent = "";
-    const list = (label, values, text) => {
-      const select = document.createElement("select");
-      select.setAttribute("aria-label", label);
-      values.forEach(v => select.append(new Option(text(v), v)));
-      select.onchange = () => send({ [id === "sleepFrom" ? "sleep_from" : "sleep_to"]: getTime(id) });
-      box.append(select);
-      return select;
-    };
-    list("Hour", use24 ? [...Array(24).keys()] : [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], v => use24 ? two(v) : v);
-    box.append(":");
-    const minutes = [...Array(12).keys()].map(i => i * 5);
-    if (!minutes.includes(m)) minutes.push(m);
-    list("Minute", minutes.sort((a, b) => a - b), two);
-    if (!use24) list("AM or PM", ["AM", "PM"], v => v);
-  }
-  const selects = box.querySelectorAll("select");
-  selects[0].value = use24 ? h : (h % 12 || 12);
-  selects[1].value = m;
-  if (!use24) selects[2].value = h < 12 ? "AM" : "PM";
-}
-
-function getTime(id) {
-  const selects = $(id).querySelectorAll("select");
-  let h = +selects[0].value;
-  if (selects.length === 3) h = (h % 12) + (selects[2].value === "PM" ? 12 : 0);
-  return two(h) + ":" + two(+selects[1].value);
-}
-
-$("clock24").onclick = () => { busyUntil = 0; send({ clock_24h: true }); busyUntil = 0; };
-$("clock12").onclick = () => { busyUntil = 0; send({ clock_24h: false }); busyUntil = 0; };
-$("firmwareFile").onchange = e => {
-  $("firmwareName").textContent = e.target.files[0] ? e.target.files[0].name : "No file chosen";
-};
-$("wakeSeconds").onchange = e => {
-  const value = Math.min(600, Math.max(5, Math.round(+e.target.value) || 30));
-  e.target.value = value;
-  send({ wake_seconds: value });
-};
+$("sleepFrom").onchange = e => send({ sleep_from: e.target.value });
+$("sleepTo").onchange = e => send({ sleep_to: e.target.value });
+$("wakeSeconds").onchange = e => send({ wake_seconds: +e.target.value });
+// The format buttons must update the lists right away, so skip the drag guard.
+$("clock24").onclick = () => { send({ clock_24h: true }); busyUntil = 0; };
+$("clock12").onclick = () => { send({ clock_24h: false }); busyUntil = 0; };
 
 // Timezones: name shown in the list and the POSIX rule the device needs.
 const ZONES = {
@@ -670,29 +838,34 @@ const ZONES = {
   "America/Argentina/Buenos_Aires": "<-03>3",
 };
 Object.keys(ZONES).sort().forEach(name => {
-  const option = document.createElement("option");
-  option.value = name;
-  option.textContent = name.replace(/_/g, " ");
-  $("timezone").append(option);
+  $("timezone").append(new Option(name.replace(/_/g, " "), name));
 });
 $("timezone").onchange = e => send({ timezone: { name: e.target.value, posix: ZONES[e.target.value] } });
 
+function note(id, text, isError) {
+  const element = $(id);
+  element.dataset.touched = "1";
+  element.classList.toggle("err", !!isError);
+  element.textContent = text;
+}
+
+$("hostnameSave").onclick = async () => {
+  const name = $("hostname").value.trim().toLowerCase();
+  const result = await post("/api/state", { hostname: name });
+  note("hostnameStatus", result.ok ? "Saved. The new address is http://" + name + ".local"
+                                   : (result.error || "Could not save."), !result.ok);
+};
+
 async function savePassword(password) {
-  const status = $("passStatus");
   const result = await post("/api/password", { password });
-  status.classList.toggle("err", !result.ok);
-  status.textContent = result.ok
+  note("passStatus", result.ok
     ? (password ? "Password set. Other devices have to log in again." : "Password removed.")
-    : (result.error || "Could not save.");
+    : (result.error || "Could not save."), !result.ok);
   if (result.ok) { $("newPass").value = ""; start(); }
 }
 $("passSave").onclick = () => {
   const password = $("newPass").value;
-  if (password.length < 4) {
-    $("passStatus").className = "status err";
-    $("passStatus").textContent = "The password needs at least 4 characters.";
-    return;
-  }
+  if (password.length < 4) { note("passStatus", "The password needs at least 4 characters.", true); return; }
   savePassword(password);
 };
 $("passRemove").onclick = () => { if (confirm("Remove the password protection?")) savePassword(""); };
@@ -702,33 +875,25 @@ $("logout").onclick = async () => {
 };
 
 async function login() {
-  const status = $("loginStatus");
   const result = await post("/api/login", { password: $("loginPass").value });
   if (result.ok) {
     $("loginPass").value = "";
-    status.textContent = "";
+    $("loginStatus").textContent = "";
     start();
   } else {
-    status.className = "status err";
-    status.textContent = result.error || "Login failed.";
+    $("loginStatus").textContent = result.error || "Login failed.";
   }
 }
 $("loginButton").onclick = login;
 $("loginPass").onkeydown = e => { if (e.key === "Enter") login(); };
 
-$("hostnameSave").onclick = async () => {
-  const name = $("hostname").value.trim().toLowerCase();
-  const result = await post("/api/state", { hostname: name });
-  const status = $("hostnameStatus");
-  status.classList.toggle("err", !result.ok);
-  status.textContent = result.ok
-    ? "Saved. The new address is http://" + name + ".local"
-    : (result.error || "Could not save.");
+$("firmwareFile").onchange = e => {
+  $("firmwareName").textContent = e.target.files[0] ? e.target.files[0].name : "No file chosen";
 };
 $("firmwareUpload").onclick = () => {
   const file = $("firmwareFile").files[0];
-  const status = $("firmwareStatus"), progress = $("firmwareProgress");
-  if (!file) { status.className = "status err"; status.textContent = "Please choose a firmware file first."; return; }
+  const progress = $("firmwareProgress");
+  if (!file) { note("firmwareStatus", "Please choose a firmware file first.", true); return; }
   if (!confirm("Install " + file.name + " now? Clawd restarts afterwards.")) return;
   const form = new FormData();
   form.append("firmware", file, file.name);
@@ -737,30 +902,25 @@ $("firmwareUpload").onclick = () => {
   request.upload.onprogress = e => {
     if (e.lengthComputable) progress.value = Math.round(e.loaded / e.total * 100);
   };
+  const done = () => { progress.hidden = true; $("firmwareUpload").disabled = false; };
   request.onload = () => {
     let result = {};
     try { result = JSON.parse(request.responseText); } catch (e) { /* no JSON */ }
-    progress.classList.add("hidden");
-    $("firmwareUpload").disabled = false;
+    done();
     if (request.status === 200 && result.ok) {
-      status.className = "status";
-      status.textContent = "Update installed. Clawd is restarting, this page reloads in a moment.";
+      note("firmwareStatus", "Update installed. Clawd is restarting, this page reloads in a moment.");
       setTimeout(() => location.reload(), 12000);
     } else {
-      status.className = "status err";
-      status.textContent = result.error || "The update failed.";
+      note("firmwareStatus", result.error || "The update failed.", true);
     }
   };
   request.onerror = () => {
-    progress.classList.add("hidden");
-    $("firmwareUpload").disabled = false;
-    status.className = "status err";
-    status.textContent = "The connection was lost during the upload. Please try again.";
+    done();
+    note("firmwareStatus", "The connection was lost during the upload. Please try again.", true);
   };
-  status.className = "status";
-  status.textContent = "Uploading…";
+  note("firmwareStatus", "Uploading…");
   progress.value = 0;
-  progress.classList.remove("hidden");
+  progress.hidden = false;
   $("firmwareUpload").disabled = true;
   request.send(form);
 };
@@ -778,8 +938,8 @@ let scanTimer = 0;
 
 function bars(rssi) { return rssi > -60 ? "▂▄▆█" : rssi > -70 ? "▂▄▆" : rssi > -80 ? "▂▄" : "▂"; }
 
-async function pollScan(start) {
-  const data = await fetch("/api/wifi/scan" + (start ? "?start=1" : "")).then(r => r.json()).catch(() => null);
+async function pollScan(begin) {
+  const data = await fetch("/api/wifi/scan" + (begin ? "?start=1" : "")).then(r => r.json()).catch(() => null);
   const list = $("networks");
   if (data && data.networks.length) {
     list.textContent = "";
@@ -788,7 +948,7 @@ async function pollScan(start) {
       const name = document.createElement("span");
       name.textContent = network.ssid;
       const info = document.createElement("small");
-      info.textContent = (network.secure ? "🔒 " : "") + bars(network.rssi);
+      info.textContent = (network.secure ? "locked " : "open ") + bars(network.rssi);
       button.append(name, info);
       button.classList.toggle("active", network.ssid === $("ssid").value);
       button.onclick = () => {
@@ -798,10 +958,9 @@ async function pollScan(start) {
       };
       list.append(button);
     });
-  } else if (!data || data.scanning) {
-    list.innerHTML = '<p class="note">Searching for networks…</p>';
   } else {
-    list.innerHTML = '<p class="note">No networks found.</p>';
+    list.innerHTML = '<p class="hint"></p>';
+    list.firstChild.textContent = (!data || data.scanning) ? "Searching for networks…" : "No networks found.";
   }
   clearTimeout(scanTimer);
   if (!data || data.scanning) scanTimer = setTimeout(() => pollScan(false), 1500);
@@ -811,16 +970,13 @@ function startScan() { scanStarted = true; pollScan(true); }
 $("rescan").onclick = startScan;
 
 $("connect").onclick = async () => {
-  const status = $("setupStatus");
   const ssid = $("ssid").value;
-  if (!ssid) { status.className = "status err"; status.textContent = "Please choose a network."; return; }
-  status.className = "status";
-  status.textContent = "Connecting to " + ssid + "…";
+  if (!ssid) { note("setupStatus", "Please choose a network.", true); return; }
+  note("setupStatus", "Connecting to " + ssid + "…");
   $("connect").disabled = true;
   const result = await post("/api/wifi", { ssid, pass: $("pass").value });
   if (!result.ok) {
-    status.className = "status err";
-    status.textContent = result.error || "Could not start.";
+    note("setupStatus", result.error || "Could not start.", true);
     $("connect").disabled = false;
     return;
   }
@@ -830,11 +986,10 @@ $("connect").onclick = async () => {
     clearInterval(timer);
     $("connect").disabled = false;
     if (data.result === "ok") {
-      status.textContent = "Connected. Switch back to your home WiFi and open http://"
-        + data.hostname + ".local or http://" + data.ip;
+      note("setupStatus", "Connected. Switch back to your home WiFi and open http://"
+        + data.hostname + ".local or http://" + data.ip);
     } else {
-      status.className = "status err";
-      status.textContent = "Could not connect. Please check the password and try again.";
+      note("setupStatus", "Could not connect. Please check the password and try again.", true);
     }
   }, 1500);
 };
@@ -851,6 +1006,7 @@ async function start() {
   if (loaded) applyState(loaded);
   connectSocket();
 }
+applyTheme();
 start();
 </script>
 </body>
