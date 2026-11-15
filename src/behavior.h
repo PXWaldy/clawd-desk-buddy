@@ -17,6 +17,10 @@ enum class EventType : uint8_t {
     SetRandom,         // value = 0 / 1
     SetEnabledMask,    // value = bit mask of enabled expressions
     SetRandomInterval, // value = seconds
+    SetBackground,     // value = RGB888
+    SetEyeColor,       // value = RGB888
+    SetBrightness,     // value = percent
+    SetDisplayOn,      // value = 0 / 1
 };
 
 struct Event {
@@ -37,5 +41,10 @@ Expression baseExpression();
 bool randomMode();
 uint16_t enabledMask();
 uint32_t randomIntervalS();
+bool displayOn();
+
+// Increases whenever the visible state (expression, random mode) changes, so
+// the web UI knows when to refresh.
+uint32_t version();
 
 }  // namespace behavior

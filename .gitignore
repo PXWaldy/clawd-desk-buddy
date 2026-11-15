@@ -3,3 +3,4 @@
 .DS_Store
 *.bin
 !docs/**/*.bin
+src/web_assets.h

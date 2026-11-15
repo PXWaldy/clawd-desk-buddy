@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Clawd Desk Buddy</title>
+<style>
+:root {
+  --bg: #141312;
+  --card: #1f1d1b;
+  --card-2: #2a2725;
+  --line: #38342f;
+  --text: #f3efe9;
+  --muted: #a39b91;
+  --accent: #e8743b;
+  --accent-soft: rgba(232, 116, 59, .16);
+  --danger: #ff7a7d;
+  --radius: 18px;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 760px; margin: 0 auto; padding: 16px 16px 48px; }
+header { display: flex; align-items: center; gap: 14px; padding: 8px 4px 18px; }
+header canvas { width: 96px; height: 52px; border-radius: 12px; flex: none; }
+header h1 { font-size: 22px; margin: 0; letter-spacing: -.01em; }
+header p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); margin-right: 6px; }
+.dot.on { background: #46a758; }
+section {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 18px; margin-bottom: 16px;
+}
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 14px; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 48px; }
+.row + .row { border-top: 1px solid var(--line); }
+.row > span { min-width: 0; }
+.row small, .note { color: var(--muted); font-size: 13px; }
+.note { margin: 10px 0 0; }
+.value { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+button, .btn {
+  font: inherit; color: var(--text); background: var(--card-2); border: 1px solid var(--line);
+  border-radius: 14px; min-height: 48px; padding: 0 18px; cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #1b0d05; font-weight: 600; }
+button.danger { color: var(--danger); }
+button:disabled { opacity: .5; cursor: default; }
+.buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+input[type=text], input[type=password] {
+  font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 12px; min-height: 48px; padding: 0 14px; width: 100%;
+}
+input[type=range] { width: 100%; accent-color: var(--accent); height: 32px; margin: 6px 0 0; }
+input[type=color] {
+  width: 64px; height: 48px; padding: 0; border: 1px solid var(--line); border-radius: 12px;
+  background: none; cursor: pointer;
+}
+/* switch */
+.switch { position: relative; width: 54px; height: 32px; flex: none; }
+.switch input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.switch i { position: absolute; inset: 0; border-radius: 16px; background: var(--card-2); border: 1px solid var(--line); transition: .15s; pointer-events: none; }
+.switch i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: var(--muted); transition: .15s; }
+.switch input:checked + i { background: var(--accent); border-color: var(--accent); }
+.switch input:checked + i::after { left: 25px; background: #fff; }
+.switch input:disabled + i { opacity: .5; }
+.switch input:focus-visible + i { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* view buttons */
+.views { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+.view { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px 6px; min-height: 0; }
+.view canvas { width: 100%; max-width: 128px; aspect-ratio: 320 / 172; border-radius: 9px; }
+.view span { font-size: 14px; }
+.view.active { border-color: var(--accent); background: var(--accent-soft); }
+.view .dice { width: 100%; max-width: 128px; aspect-ratio: 320 / 172; border-radius: 9px; background: var(--bg); display: grid; place-items: center; font-size: 26px; }
+.colors { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+.colors canvas { width: 180px; height: 97px; border-radius: 12px; }
+.colors label { display: flex; align-items: center; gap: 12px; min-height: 56px; }
+.networks { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+.networks button { display: flex; justify-content: space-between; align-items: center; text-align: left; }
+.networks button.active { border-color: var(--accent); background: var(--accent-soft); }
+.field { margin-top: 12px; }
+.field label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 6px; }
+.inline { display: flex; gap: 10px; }
+.inline input { flex: 1; min-width: 0; }
+.status { margin-top: 12px; min-height: 22px; font-size: 14px; }
+.status.err { color: var(--danger); }
+.hidden { display: none !important; }
+dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; font-size: 15px; }
+dt { color: var(--muted); }
+dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <canvas id="face" width="320" height="172"></canvas>
+    <div>
+      <h1>Clawd Desk Buddy</h1>
+      <p><span class="dot" id="linkDot"></span><span id="linkText">Connecting…</span></p>
+    </div>
+  </header>
+
+  <!-- WiFi setup: shown first while the setup access point is open -->
+  <section id="setup" class="hidden">
+    <h2>WiFi setup</h2>
+    <p class="note" style="margin-top:0">Choose your home network. Clawd connects to it and is then reachable at <b id="setupHost">http://clawd.local</b>.</p>
+    <div class="networks" id="networks"></div>
+    <button id="rescan">Search again</button>
+    <div class="field">
+      <label for="ssid">Network name</label>
+      <input type="text" id="ssid" maxlength="32" autocomplete="off" autocapitalize="none" spellcheck="false">
+    </div>
+    <div class="field">
+      <label for="pass">Password</label>
+      <input type="password" id="pass" maxlength="64" autocomplete="off">
+    </div>
+    <div class="buttons"><button class="primary" id="connect">Connect</button></div>
+    <div class="status" id="setupStatus"></div>
+  </section>
+
+  <section>
+    <h2>Controls</h2>
+    <div class="row">
+      <span>Display</span>
+      <label class="switch"><input type="checkbox" id="displayOn"><i></i></label>
+    </div>
+    <div class="row" style="display:block; padding-top:12px">
+      <div style="display:flex; justify-content:space-between"><span>Brightness</span><span class="value" id="brightnessValue"></span></div>
+      <input type="range" id="brightness" min="5" max="100" step="1">
+    </div>
+  </section>
+
+  <section>
+    <h2>Views</h2>
+    <div class="views" id="views"></div>
+    <p class="note">Tap the figure once and Clawd looks happy. Tap again while it is happy to switch to the next view.</p>
+  </section>
+
+  <section>
+    <h2>Expressions</h2>
+    <div id="toggles"></div>
+    <p class="note">Only enabled expressions are used by random mode and by tapping.</p>
+  </section>
+
+  <section>
+    <h2>Speed</h2>
+    <div style="display:flex; justify-content:space-between"><span>Random mode switches every</span><span class="value" id="intervalValue"></span></div>
+    <input type="range" id="interval" min="5" max="300" step="5">
+  </section>
+
+  <section>
+    <h2>Color</h2>
+    <div class="colors">
+      <canvas id="preview" width="320" height="172"></canvas>
+      <div>
+        <label><input type="color" id="bg"> Background</label>
+        <label><input type="color" id="eye"> Eyes</label>
+      </div>
+    </div>
+    <div class="buttons">
+      <button id="colorReset">Reset to defaults</button>
+      <button id="colorOriginal">Original Claude orange</button>
+    </div>
+    <p class="note">The small display shows colors paler than your phone or monitor. The default background is tuned to look like Claude orange on the display itself.</p>
+  </section>
+
+  <section>
+    <h2>Settings</h2>
+    <div class="field" style="margin-top:0">
+      <label for="hostname">Device name</label>
+      <div class="inline">
+        <input type="text" id="hostname" maxlength="32" autocomplete="off" autocapitalize="none" spellcheck="false">
+        <button id="hostnameSave">Save</button>
+      </div>
+      <div class="status" id="hostnameStatus"></div>
+    </div>
+    <dl>
+      <dt>WiFi</dt><dd id="infoSsid">–</dd>
+      <dt>Signal</dt><dd id="infoRssi">–</dd>
+      <dt>IP address</dt><dd id="infoIp">–</dd>
+      <dt>Address</dt><dd id="infoHost">–</dd>
+      <dt>Firmware</dt><dd id="infoVersion">–</dd>
+    </dl>
+    <div class="buttons">
+      <button id="reboot">Reboot</button>
+      <button class="danger" id="wifiReset">Reset WiFi</button>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+let state = null;
+let socket = null;
+let busyUntil = 0;          // while the user drags a control, do not overwrite it
+
+// ---------------------------------------------------------------- drawing --
+// Simplified copy of the eye shapes in the firmware, used for the previews.
+// [w, h, dy, topCut, botCut, slant] for the left and the right eye.
+const SHAPES = {
+  normal:     { l: [44, 84, 0, 0, 0, 0] },
+  happy:      { l: [52, 72, -4, 0, 0, 0], chevron: true, blush: true },
+  in_love:    { l: [60, 84, 0, 0, 0, 0], heart: true },
+  excited:    { l: [60, 96, -4, 0, 0, 0], sparkle: true },
+  curious:    { l: [48, 96, -6, 0, 0, 0], r: [44, 84, 6, 40, 0, 8] },
+  surprised:  { l: [52, 112, 0, 0, 0, 0] },
+  suspicious: { l: [52, 84, 0, 36, 20, 0], dx: 16 },
+  sleepy:     { l: [48, 84, 6, 50, 0, 0], zzz: true },
+  sad:        { l: [44, 80, 10, 8, 0, -24] },
+  grumpy:     { l: [52, 76, 0, 4, 0, 28], angry: true },
+};
+const HEART = [0b0110110, 0b1111111, 0b1111111, 0b0111110, 0b0011100, 0b0001000];
+const ZED = [0b11111, 0b00010, 0b00100, 0b01000, 0b11111];
+const G = 4;
+const snap = v => Math.round(v / G) * G;
+
+function blocks(ctx, rows, cols, cx, cy, cell, color) {
+  ctx.fillStyle = color;
+  const x0 = cx - cols * cell / 2, y0 = cy - rows.length * cell / 2;
+  rows.forEach((row, r) => {
+    for (let c = 0; c < cols; c++) {
+      if (row & (1 << (cols - 1 - c))) ctx.fillRect(x0 + c * cell, y0 + r * cell, cell, cell);
+    }
+  });
+}
+
+function drawFace(canvas, id, bg, eye) {
+  const ctx = canvas.getContext("2d");
+  const a = (state && state.accents) || {};
+  const shape = SHAPES[id] || SHAPES.normal;
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, 320, 172);
+  const eyeColor = shape.angry ? (a.angry || "#a80010") : eye;
+  [[86, shape.l, 1], [234, shape.r || shape.l, -1]].forEach(([restX, s, inner]) => {
+    const [w, h, dy, top, bot, slant] = s;
+    const x0 = restX - w / 2 + (shape.dx || 0);
+    const cy = 86 + dy;
+    ctx.fillStyle = eyeColor;
+    if (shape.chevron) {
+      const thick = G * 5, span = w - thick, rows = h / G;
+      for (let j = 0; j < rows; j++) {
+        const v = (j + .5) / rows;
+        const off = snap((1 - Math.abs(2 * v - 1)) * span);
+        ctx.fillRect(inner > 0 ? x0 + off : x0 + span - off, cy - h / 2 + j * G, thick, G);
+      }
+      return;
+    }
+    const cols = Math.round(w / G);
+    for (let i = 0; i < cols; i++) {
+      const u = ((i + .5) / cols - .5) * inner;
+      const ys = snap(cy - h / 2 + top + slant * u), ye = snap(cy + h / 2 - bot);
+      if (ye - ys >= G) ctx.fillRect(x0 + i * G, ys, G, ye - ys);
+    }
+    if (shape.heart) blocks(ctx, HEART, 7, x0 + w / 2, cy, 5, a.heart || "#ffd1e0");
+    if (shape.sparkle) {
+      ctx.fillStyle = a.sparkle || "#fff4d6";
+      ctx.fillRect(x0 + 8, cy - h / 2 + 12, 16, 16);
+      ctx.fillRect(x0 + w - 20, cy + h / 2 - 28, 8, 8);
+    }
+  });
+  if (shape.blush) {
+    ctx.fillStyle = a.blush || "#ffa0a0";
+    for (let k = 0; k < 3; k++) {
+      ctx.fillRect(50 + k * 14, 130, 8, 8);
+      ctx.fillRect(262 - k * 14, 130, 8, 8);
+    }
+  }
+  if (shape.heart) {
+    blocks(ctx, HEART, 7, 160, 40, 3, a.heart || "#ffd1e0");
+    blocks(ctx, HEART, 7, 296, 120, 2, a.heart || "#ffd1e0");
+  }
+  if (shape.sparkle) {
+    blocks(ctx, [0b010, 0b111, 0b010], 3, 160, 50, 4, a.sparkle || "#fff4d6");
+    blocks(ctx, [0b010, 0b111, 0b010], 3, 24, 120, 4, a.sparkle || "#fff4d6");
+  }
+  if (shape.zzz) {
+    blocks(ctx, ZED, 5, 282, 48, 3, "#ffffff");
+    blocks(ctx, ZED, 5, 300, 24, 2, "#ffffff");
+  }
+}
+
+// -------------------------------------------------------------- transport --
+function send(patch) {
+  busyUntil = Date.now() + 600;
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify(patch));
+  } else {
+    post("/api/state", patch);
+  }
+}
+
+async function post(url, body) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body || {}),
+  });
+  return response.json().catch(() => ({ ok: response.ok }));
+}
+
+function setLink(online) {
+  $("linkDot").classList.toggle("on", online);
+  $("linkText").textContent = online ? "Connected" : "Connecting…";
+}
+
+function connectSocket() {
+  socket = new WebSocket("ws://" + location.host + "/ws");
+  socket.onopen = () => setLink(true);
+  socket.onmessage = event => {
+    try { applyState(JSON.parse(event.data)); } catch (e) { /* ignore broken frames */ }
+  };
+  socket.onclose = () => { setLink(false); setTimeout(connectSocket, 1500); };
+  socket.onerror = () => socket.close();
+}
+
+// ------------------------------------------------------------------ render --
+let builtFor = "";
+
+function build() {
+  // The lists only change when an expression is switched on or off.
+  const key = state.expressions.map(e => e.id + (e.enabled ? 1 : 0)).join(",");
+  if (key === builtFor) return;
+  builtFor = key;
+
+  const views = $("views");
+  views.textContent = "";
+  state.expressions.filter(e => e.enabled).forEach(e => {
+    const button = document.createElement("button");
+    button.className = "view";
+    button.dataset.id = e.id;
+    const canvas = document.createElement("canvas");
+    canvas.width = 320; canvas.height = 172;
+    const label = document.createElement("span");
+    label.textContent = e.name;
+    button.append(canvas, label);
+    button.onclick = () => send({ expression: e.id });
+    views.append(button);
+  });
+  const random = document.createElement("button");
+  random.className = "view";
+  random.dataset.id = "random";
+  random.innerHTML = '<div class="dice" aria-hidden="true">🎲</div><span>Random</span>';
+  random.onclick = () => send({ random: true });
+  views.append(random);
+
+  const toggles = $("toggles");
+  toggles.textContent = "";
+  const enabledCount = state.expressions.filter(e => e.enabled).length;
+  state.expressions.forEach(e => {
+    const row = document.createElement("div");
+    row.className = "row";
+    const name = document.createElement("span");
+    name.textContent = e.name;
+    const label = document.createElement("label");
+    label.className = "switch";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.checked = e.enabled;
+    input.setAttribute("aria-label", e.name);
+    // The last enabled expression cannot be switched off.
+    input.disabled = e.enabled && enabledCount === 1;
+    input.onchange = () => {
+      const ids = state.expressions
+        .filter(x => (x.id === e.id ? input.checked : x.enabled))
+        .map(x => x.id);
+      if (ids.length === 0) { input.checked = true; return; }
+      send({ enabled: ids });
+    };
+    label.append(input, document.createElement("i"));
+    row.append(name, label);
+    toggles.append(row);
+  });
+}
+
+function paint() {
+  const bg = $("bg").value, eye = $("eye").value;
+  document.querySelectorAll(".view canvas").forEach(canvas => {
+    drawFace(canvas, canvas.parentElement.dataset.id, bg, eye);
+  });
+  const shown = state.random ? "normal" : state.expression;
+  drawFace($("preview"), shown, bg, eye);
+  drawFace($("face"), shown, bg, eye);
+}
+
+function seconds(value) {
+  return value < 60 ? value + " s" : Math.floor(value / 60) + " min" + (value % 60 ? " " + value % 60 + " s" : "");
+}
+
+function applyState(next) {
+  state = next;
+  build();
+  const idle = Date.now() > busyUntil;
+  if (idle) {
+    $("displayOn").checked = state.display_on;
+    $("brightness").value = state.brightness;
+    $("interval").value = state.interval;
+    $("bg").value = state.bg;
+    $("eye").value = state.eye;
+  }
+  $("brightnessValue").textContent = $("brightness").value + " %";
+  $("intervalValue").textContent = seconds(+$("interval").value);
+  document.querySelectorAll(".view").forEach(button => {
+    const id = button.dataset.id;
+    button.classList.toggle("active", state.random ? id === "random" : id === state.expression);
+  });
+  if (document.activeElement !== $("hostname")) $("hostname").value = state.wifi.hostname;
+  const w = state.wifi;
+  $("infoSsid").textContent = w.connected ? w.ssid : (w.setup ? "Setup mode" : "Not connected");
+  $("infoRssi").textContent = w.connected ? w.rssi + " dBm" : "–";
+  $("infoIp").textContent = w.ip || "–";
+  $("infoHost").textContent = "http://" + w.hostname + ".local";
+  $("infoVersion").textContent = state.version;
+  $("setupHost").textContent = "http://" + w.hostname + ".local";
+  $("setup").classList.toggle("hidden", !w.setup);
+  if (w.setup && !scanStarted) startScan();
+  paint();
+}
+
+// ---------------------------------------------------------------- controls --
+$("displayOn").onchange = e => send({ display_on: e.target.checked });
+$("brightness").oninput = e => {
+  $("brightnessValue").textContent = e.target.value + " %";
+  send({ brightness: +e.target.value });
+};
+$("interval").oninput = e => {
+  $("intervalValue").textContent = seconds(+e.target.value);
+  send({ interval: +e.target.value });
+};
+$("bg").oninput = e => { paint(); send({ bg: e.target.value }); };
+$("eye").oninput = e => { paint(); send({ eye: e.target.value }); };
+$("colorReset").onclick = () => { busyUntil = 0; post("/api/colors/reset"); };
+$("colorOriginal").onclick = () => { busyUntil = 0; post("/api/state", { bg: state.defaults.claude_orange }); };
+
+$("hostnameSave").onclick = async () => {
+  const name = $("hostname").value.trim().toLowerCase();
+  const result = await post("/api/state", { hostname: name });
+  const status = $("hostnameStatus");
+  status.classList.toggle("err", !result.ok);
+  status.textContent = result.ok
+    ? "Saved. The new address is http://" + name + ".local"
+    : (result.error || "Could not save.");
+};
+$("reboot").onclick = () => { if (confirm("Reboot Clawd now?")) post("/api/reboot"); };
+$("wifiReset").onclick = () => {
+  if (confirm("Forget the WiFi network? Clawd then opens the setup network \"Clawd-Setup\".")) {
+    post("/api/wifi/reset");
+  }
+};
+
+// -------------------------------------------------------------- WiFi setup --
+let scanStarted = false;
+let scanTimer = 0;
+
+function bars(rssi) { return rssi > -60 ? "▂▄▆█" : rssi > -70 ? "▂▄▆" : rssi > -80 ? "▂▄" : "▂"; }
+
+async function pollScan(start) {
+  const data = await fetch("/api/wifi/scan" + (start ? "?start=1" : "")).then(r => r.json()).catch(() => null);
+  const list = $("networks");
+  if (data && data.networks.length) {
+    list.textContent = "";
+    data.networks.forEach(network => {
+      const button = document.createElement("button");
+      const name = document.createElement("span");
+      name.textContent = network.ssid;
+      const info = document.createElement("small");
+      info.textContent = (network.secure ? "🔒 " : "") + bars(network.rssi);
+      button.append(name, info);
+      button.classList.toggle("active", network.ssid === $("ssid").value);
+      button.onclick = () => {
+        $("ssid").value = network.ssid;
+        list.querySelectorAll("button").forEach(b => b.classList.toggle("active", b === button));
+        $("pass").focus();
+      };
+      list.append(button);
+    });
+  } else if (!data || data.scanning) {
+    list.innerHTML = '<p class="note">Searching for networks…</p>';
+  } else {
+    list.innerHTML = '<p class="note">No networks found.</p>';
+  }
+  clearTimeout(scanTimer);
+  if (!data || data.scanning) scanTimer = setTimeout(() => pollScan(false), 1500);
+}
+
+function startScan() { scanStarted = true; pollScan(true); }
+$("rescan").onclick = startScan;
+
+$("connect").onclick = async () => {
+  const status = $("setupStatus");
+  const ssid = $("ssid").value;
+  if (!ssid) { status.className = "status err"; status.textContent = "Please choose a network."; return; }
+  status.className = "status";
+  status.textContent = "Connecting to " + ssid + "…";
+  $("connect").disabled = true;
+  const result = await post("/api/wifi", { ssid, pass: $("pass").value });
+  if (!result.ok) {
+    status.className = "status err";
+    status.textContent = result.error || "Could not start.";
+    $("connect").disabled = false;
+    return;
+  }
+  const timer = setInterval(async () => {
+    const data = await fetch("/api/wifi/status").then(r => r.json()).catch(() => null);
+    if (!data || data.result === "trying") return;
+    clearInterval(timer);
+    $("connect").disabled = false;
+    if (data.result === "ok") {
+      status.textContent = "Connected. Switch back to your home WiFi and open http://"
+        + data.hostname + ".local or http://" + data.ip;
+    } else {
+      status.className = "status err";
+      status.textContent = "Could not connect. Please check the password and try again.";
+    }
+  }, 1500);
+};
+
+// ------------------------------------------------------------------- start --
+fetch("/api/state").then(r => r.json()).then(applyState).catch(() => {});
+connectSocket();
+</script>
+</body>
+</html>

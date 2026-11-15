@@ -2,7 +2,10 @@
 
 #include <Arduino.h>
 
+#include <atomic>
+
 #include "config.h"
+#include "display.h"
 #include "eyes.h"
 
 namespace {
@@ -15,6 +18,10 @@ bool randomOn = true;
 uint32_t randomIntervalSeconds = cfg::RANDOM_INTERVAL_DEFAULT_S;
 uint32_t nextRandomMs = 0;
 uint32_t reactionUntilMs = 0;           // 0 = no tap reaction running
+uint32_t colorBackground = cfg::COLOR_BACKGROUND;
+uint32_t colorEye = cfg::COLOR_EYE;
+bool screenOn = true;
+std::atomic<uint32_t> stateVersion{0};
 
 bool isEnabled(Expression e) { return enabled & (1u << (uint8_t)e); }
 
@@ -26,6 +33,7 @@ void showBase(uint32_t now) {
     reactionUntilMs = 0;
     eyes::setExpression(base);
     scheduleRandom(now);
+    stateVersion++;
 }
 
 // The next enabled expression after `from`, in list order.
@@ -80,6 +88,7 @@ void handle(const behavior::Event& ev, uint32_t now) {
     case EventType::SetRandom:
         randomOn = ev.value != 0;
         scheduleRandom(now);
+        stateVersion++;
         break;
     case EventType::SetEnabledMask: {
         const uint16_t mask = (uint16_t)ev.value & ALL_EXPRESSIONS_MASK;
@@ -91,6 +100,21 @@ void handle(const behavior::Event& ev, uint32_t now) {
         }
         break;
     }
+    case EventType::SetBackground:
+        colorBackground = (uint32_t)ev.value & 0xFFFFFF;
+        eyes::setColors(colorBackground, colorEye);
+        break;
+    case EventType::SetEyeColor:
+        colorEye = (uint32_t)ev.value & 0xFFFFFF;
+        eyes::setColors(colorBackground, colorEye);
+        break;
+    case EventType::SetBrightness:
+        display::setBrightness((uint8_t)constrain(ev.value, 0, 100));
+        break;
+    case EventType::SetDisplayOn:
+        screenOn = ev.value != 0;
+        display::setBacklight(screenOn);
+        break;
     case EventType::SetRandomInterval:
         randomIntervalSeconds = constrain((uint32_t)ev.value, cfg::RANDOM_INTERVAL_MIN_S,
                                           cfg::RANDOM_INTERVAL_MAX_S);
@@ -130,5 +154,7 @@ Expression baseExpression() { return base; }
 bool randomMode() { return randomOn; }
 uint16_t enabledMask() { return enabled; }
 uint32_t randomIntervalS() { return randomIntervalSeconds; }
+bool displayOn() { return screenOn; }
+uint32_t version() { return stateVersion; }
 
 }  // namespace behavior

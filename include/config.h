@@ -6,7 +6,15 @@
 
 #include <stdint.h>
 
+// Set by the release build (see .github/workflows), otherwise a dev version.
+#ifndef FW_VERSION
+#define FW_VERSION "0.1.0-dev"
+#endif
+
 namespace cfg {
+
+constexpr char FIRMWARE_NAME[]    = "Clawd Desk Buddy";
+constexpr char FIRMWARE_VERSION[] = FW_VERSION;
 
 // ---------------------------------------------------------------------------
 // Hardware: Waveshare ESP32-C6-Touch-LCD-1.47
@@ -64,6 +72,23 @@ constexpr uint32_t HAPPY_REACTION_MS = 2000;     // happy look after a tap
 constexpr uint32_t RANDOM_INTERVAL_DEFAULT_S = 20;
 constexpr uint32_t RANDOM_INTERVAL_MIN_S = 5;
 constexpr uint32_t RANDOM_INTERVAL_MAX_S = 300;
+
+// ---------------------------------------------------------------------------
+// Network
+// ---------------------------------------------------------------------------
+constexpr char DEFAULT_HOSTNAME[] = "clawd";             // http://clawd.local
+constexpr char SETUP_AP_SSID[]    = "Clawd-Setup";
+constexpr uint32_t SETUP_AP_TIMEOUT_MS   = 10 * 60 * 1000; // close AP without clients
+constexpr uint32_t SETUP_AP_LINGER_MS    = 20 * 1000;      // keep AP after success
+constexpr uint32_t WIFI_CONNECT_TIMEOUT_MS = 15 * 1000;    // per attempt
+constexpr uint8_t  WIFI_CONNECT_ATTEMPTS = 3;              // then fall back to setup
+constexpr uint32_t WIFI_LOST_GRACE_MS    = 30 * 1000;      // before reconnecting by hand
+constexpr uint32_t WIFI_RETRY_PAUSE_MS   = 60 * 1000;      // retry while offline
+constexpr uint32_t IP_HINT_MS            = 6000;           // show IP after connecting
+constexpr char DEFAULT_TIMEZONE[] = "CET-1CEST,M3.5.0,M10.5.0/3";  // Europe/Berlin
+constexpr char NTP_SERVER[]       = "pool.ntp.org";
+
+constexpr uint32_t SETTINGS_SAVE_DELAY_MS = 2000;  // collect changes before writing flash
 
 // Touch gestures
 constexpr uint32_t TAP_MAX_MS        = 800;      // longer presses are no tap

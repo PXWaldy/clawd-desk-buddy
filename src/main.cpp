@@ -10,9 +10,15 @@
 #include "display.h"
 #include "eyes.h"
 #include "hint.h"
+#include "improv_serial.h"
+#include "net.h"
+#include "settings.h"
 #include "touch.h"
+#include "web.h"
 
 namespace {
+
+volatile bool factoryResetRequested = false;
 
 // Shows what a long press will do while the finger is still down.
 void updateHoldHint(uint32_t now) {
@@ -36,14 +42,11 @@ void handleGesture(touch::Gesture gesture) {
         behavior::post(behavior::EventType::Tap);
         break;
     case touch::Gesture::WifiSetup:
-        // WiFi setup itself follows with the network milestone.
-        Serial.println("Gesture: WiFi setup");
-        hint::show("WiFi setup", "", "(coming soon)", 2500);
+        net::requestSetup();
         break;
     case touch::Gesture::FactoryReset:
-        // The reset itself follows with the settings milestone.
-        Serial.println("Gesture: factory reset");
-        hint::show("Factory reset", "", "(coming soon)", 2500);
+        hint::show("Factory reset", "", "Restarting...", 0);
+        factoryResetRequested = true;
         break;
     default:
         break;
@@ -68,17 +71,19 @@ void animationTask(void*) {
 
         if (display::present() && firstFrame) {
             firstFrame = false;
-            display::setBacklight(true);
+            display::setBacklight(behavior::displayOn());
         }
         vTaskDelayUntil(&wake, pdMS_TO_TICKS(cfg::FRAME_MS));
     }
 }
 
-// Small serial console for testing: 0-9 selects an expression, r switches
+// The serial port carries Improv packets (WiFi setup from the web flasher)
+// and a small console for testing: 0-9 selects an expression, r switches
 // random mode on, t simulates a tap.
-void handleSerialConsole() {
+void handleSerial() {
     while (Serial.available()) {
         const int ch = Serial.read();
+        if (improv::handleByte((uint8_t)ch)) continue;
         if (ch >= '0' && ch <= '9') {
             behavior::post(behavior::EventType::SetExpression, ch - '0');
             Serial.printf("Expression: %s\n", expressionName((Expression)(ch - '0')));
@@ -92,23 +97,58 @@ void handleSerialConsole() {
     }
 }
 
+// Hands the stored settings to the modules that use them.
+void applySettings() {
+    using behavior::EventType;
+    const Settings s = settings::get();
+    behavior::post(EventType::SetBackground, (int32_t)s.colorBackground);
+    behavior::post(EventType::SetEyeColor, (int32_t)s.colorEye);
+    behavior::post(EventType::SetBrightness, s.brightness);
+    behavior::post(EventType::SetDisplayOn, s.displayOn);
+    behavior::post(EventType::SetEnabledMask, s.enabledMask);
+    behavior::post(EventType::SetRandomInterval, s.randomIntervalS);
+    behavior::post(EventType::SetRandom, s.randomMode);
+}
+
+void restart() {
+    settings::flush();
+    delay(600);   // let the last HTTP response and the hint get out
+    ESP.restart();
+}
+
 }  // namespace
 
 void setup() {
     Serial.begin(115200);
-    Serial.println("Clawd Desk Buddy starting");
+    Serial.printf("%s %s starting\n", cfg::FIRMWARE_NAME, cfg::FIRMWARE_VERSION);
     randomSeed(esp_random());
 
+    settings::begin();
     display::begin();
-    display::setBrightness(cfg::DEFAULT_BRIGHTNESS);
     eyes::begin();
     behavior::begin();
+    applySettings();
     if (!touch::begin()) Serial.println("Touch controller not found");
 
     xTaskCreate(animationTask, "anim", 8192, nullptr, 3, nullptr);
+
+    net::begin();
+    web::begin();
 }
 
 void loop() {
-    handleSerialConsole();
-    delay(20);
+    const uint32_t now = millis();
+    handleSerial();
+    improv::loop();
+    net::loop(now);
+    web::loop(now);
+    settings::loop(now);
+
+    if (factoryResetRequested) {
+        settings::factoryReset();
+        restart();
+    }
+    if (web::rebootRequested()) restart();
+
+    delay(10);
 }
