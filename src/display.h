@@ -16,8 +16,9 @@ lgfx::LGFX_Sprite& canvas();
 // Changes one palette color (RGB888). Takes effect on the next present().
 void setPaletteColor(uint8_t index, uint32_t rgb888);
 
-// Pushes the framebuffer to the panel.
-void present();
+// Pushes the framebuffer to the panel. Only the area that changed since the
+// last call is transferred. Returns false if nothing changed.
+bool present();
 
 // Backlight brightness in percent (0..100). Remembered while the light is off.
 void setBrightness(uint8_t percent);

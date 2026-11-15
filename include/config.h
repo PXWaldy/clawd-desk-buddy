@@ -26,6 +26,11 @@ constexpr int PIN_I2C_SCL  = 19;
 constexpr int PIN_TOUCH_RST = 20;
 constexpr int PIN_TOUCH_INT = 21;
 
+// Touch controller AXS5106L (facts from the official Waveshare examples)
+constexpr uint8_t  TOUCH_I2C_ADDR = 0x63;
+constexpr uint8_t  TOUCH_REG_DATA = 0x01;
+constexpr uint32_t I2C_HZ = 400000;
+
 // Panel geometry (JD9853, 172 x 320 visible inside a 240 x 320 controller RAM)
 constexpr int PANEL_WIDTH    = 172;
 constexpr int PANEL_HEIGHT   = 320;
@@ -50,6 +55,21 @@ constexpr uint8_t  DEFAULT_BRIGHTNESS = 80;  // percent
 // Animation
 // ---------------------------------------------------------------------------
 constexpr uint32_t FRAME_MS = 33;  // ~30 fps
+constexpr uint32_t TRANSITION_MS = 280;      // morph between two expressions
+
+// ---------------------------------------------------------------------------
+// Behaviour
+// ---------------------------------------------------------------------------
+constexpr uint32_t HAPPY_REACTION_MS = 2000;     // happy look after a tap
+constexpr uint32_t RANDOM_INTERVAL_DEFAULT_S = 20;
+constexpr uint32_t RANDOM_INTERVAL_MIN_S = 5;
+constexpr uint32_t RANDOM_INTERVAL_MAX_S = 300;
+
+// Touch gestures
+constexpr uint32_t TAP_MAX_MS        = 800;      // longer presses are no tap
+constexpr uint32_t HOLD_WIFI_MS      = 5000;     // release after this: WiFi setup
+constexpr uint32_t HOLD_FACTORY_MS   = 15000;    // keep holding: factory reset
+constexpr uint32_t TOUCH_RELEASE_MS  = 80;       // debounce for lifting the finger
 
 // ---------------------------------------------------------------------------
 // Eye look
@@ -85,10 +105,10 @@ constexpr uint32_t COLOR_EYE        = 0x000000;
 
 // Accent colors. They are independent of the eye color and are picked to
 // stay visible on the orange background.
-constexpr uint32_t COLOR_BLUSH   = 0xF2A6A0;
-constexpr uint32_t COLOR_HEART   = 0xC2185B;
+constexpr uint32_t COLOR_BLUSH   = 0xFFA0A0;
+constexpr uint32_t COLOR_HEART   = 0xFFD1E0;
 constexpr uint32_t COLOR_SPARKLE = 0xFFF4D6;
-constexpr uint32_t COLOR_ANGRY   = 0xB00020;
+constexpr uint32_t COLOR_ANGRY   = 0xA80010;
 constexpr uint32_t COLOR_TEXT    = 0xFFFFFF;
 
 // Palette slots of the 4 bit framebuffer

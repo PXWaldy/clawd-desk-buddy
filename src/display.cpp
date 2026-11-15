@@ -108,6 +108,12 @@ private:
 ClawdLcd lcd;
 lgfx::LGFX_Sprite frame(&lcd);
 
+// Copy of the frame that is currently on the panel. Comparing against it
+// tells which part of the screen really has to be transferred.
+constexpr int ROW_BYTES = cfg::SCREEN_W / 2;   // 4 bit per pixel
+uint8_t* shadow = nullptr;
+bool fullPushNeeded = true;
+
 uint8_t brightnessPercent = cfg::DEFAULT_BRIGHTNESS;
 bool lightOn = false;
 
@@ -149,6 +155,8 @@ void begin() {
     setPaletteColor(cfg::PAL_ANGRY, cfg::COLOR_ANGRY);
     setPaletteColor(cfg::PAL_TEXT, cfg::COLOR_TEXT);
     frame.fillScreen(cfg::PAL_BACKGROUND);
+
+    shadow = (uint8_t*)malloc(ROW_BYTES * cfg::SCREEN_H);
 }
 
 lgfx::LGFX_Sprite& canvas() { return frame; }
@@ -156,9 +164,41 @@ lgfx::LGFX_Sprite& canvas() { return frame; }
 void setPaletteColor(uint8_t index, uint32_t rgb888) {
     frame.setPaletteColor(index, (uint8_t)(rgb888 >> 16), (uint8_t)(rgb888 >> 8),
                           (uint8_t)rgb888);
+    fullPushNeeded = true;   // a palette change affects the whole screen
 }
 
-void present() { frame.pushSprite(0, 0); }
+bool present() {
+    const uint8_t* buf = (const uint8_t*)frame.getBuffer();
+    int y0 = -1, y1 = -1, b0 = ROW_BYTES, b1 = -1;
+
+    if (fullPushNeeded || shadow == nullptr) {
+        y0 = 0; y1 = cfg::SCREEN_H - 1; b0 = 0; b1 = ROW_BYTES - 1;
+    } else {
+        for (int y = 0; y < cfg::SCREEN_H; y++) {
+            const uint8_t* a = buf + y * ROW_BYTES;
+            const uint8_t* b = shadow + y * ROW_BYTES;
+            if (memcmp(a, b, ROW_BYTES) == 0) continue;
+            int first = 0, last = ROW_BYTES - 1;
+            while (a[first] == b[first]) first++;
+            while (a[last] == b[last]) last--;
+            if (y0 < 0) y0 = y;
+            y1 = y;
+            if (first < b0) b0 = first;
+            if (last > b1) b1 = last;
+        }
+        if (y0 < 0) return false;
+    }
+
+    if (shadow != nullptr) {
+        memcpy(shadow + y0 * ROW_BYTES, buf + y0 * ROW_BYTES, (y1 - y0 + 1) * ROW_BYTES);
+    }
+    fullPushNeeded = false;
+
+    lcd.setClipRect(b0 * 2, y0, (b1 - b0 + 1) * 2, y1 - y0 + 1);
+    frame.pushSprite(0, 0);
+    lcd.clearClipRect();
+    return true;
+}
 
 void setBrightness(uint8_t percent) {
     brightnessPercent = percent > 100 ? 100 : percent;
