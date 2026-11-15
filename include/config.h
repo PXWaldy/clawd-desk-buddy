@@ -6,9 +6,9 @@
 
 #include <stdint.h>
 
-// Set by the release build (see .github/workflows), otherwise a dev version.
+// Set by scripts/version.py from the git tag.
 #ifndef FW_VERSION
-#define FW_VERSION "0.1.0-dev"
+#define FW_VERSION "dev"
 #endif
 
 namespace cfg {
