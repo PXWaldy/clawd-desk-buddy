@@ -27,7 +27,7 @@
   --secondary: #27272a;
   --destructive: #f87171;
   --primary: #e05500;            /* follows the display background color */
-  --primary-foreground: #ffffff;
+  --primary-foreground: #09090b;
   --ring: rgba(224, 85, 0, .45);
   --accent-text: var(--primary);   /* accent used for small text */
   color-scheme: dark;
@@ -70,7 +70,7 @@ header p { margin: 2px 0 0; color: var(--muted-foreground); font-size: 13px; }
 .status .online i { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
 .status .time { color: var(--muted-foreground); }
 /* compact appearance switch: text on wide screens, icons on phones */
-.toggle-group.theme { justify-self: end; height: 28px; padding: 2px; margin-top: 4px; font-family: Inter, system-ui, sans-serif; }
+.toggle-group.theme { justify-self: end; height: 32px; padding: 4px; margin-top: 4px; font-family: Inter, system-ui, sans-serif; }
 .toggle-group.theme button { padding: 0 10px; font-size: 12px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; }
 .toggle-group.theme svg { width: 14px; height: 14px; display: none; }
 
@@ -147,7 +147,7 @@ label, .label { font-size: 13px; font-weight: 500; }
 .value { color: var(--accent-text); font: 500 12px var(--mono); }
 
 /* toggle group */
-.toggle-group { display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; height: 40px; padding: 3px; gap: 2px; background: var(--muted); border-radius: var(--radius); }
+.toggle-group { display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; height: 40px; padding: 4px; gap: 2px; background: var(--muted); border-radius: var(--radius); }
 .toggle-group button { font: inherit; font-weight: 500; font-size: 13px; color: var(--muted-foreground); background: none; border: 0; border-radius: 7px; padding: 0 14px; cursor: pointer; white-space: nowrap; }
 .toggle-group button[aria-pressed=true] { background: var(--background); color: var(--foreground); box-shadow: 0 1px 2px rgba(0, 0, 0, .25); }
 
@@ -209,15 +209,15 @@ header p { font-family: var(--mono); }
   .colors { grid-template-columns: 1fr; }
   .colors canvas { max-width: 220px; }
   .status .extra { display: none; }
-  .toggle-group.theme { height: 32px; }
+  .toggle-group.theme { height: 34px; }
   .toggle-group.theme button { padding: 0 9px; }
   .toggle-group.theme svg { display: block; }
   .toggle-group.theme button span { display: none; }
   header { align-items: flex-start; }
   header { gap: 12px; }
   .views { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-  header canvas { width: 64px; height: 34px; }
-  header h1 { font-size: 17px; white-space: nowrap; }
+  header canvas { width: 56px; height: 30px; }
+  header h1 { font-size: 18px; white-space: nowrap; }
   /* 16 px keeps iOS from zooming into fields */
   .input, .select { font-size: 16px; }
 }
@@ -545,7 +545,11 @@ function setAccent(hex) {
   const root = document.documentElement.style;
   root.setProperty("--primary", `rgb(${r}, ${g}, ${b})`);
   root.setProperty("--ring", `rgba(${r}, ${g}, ${b}, .45)`);
-  root.setProperty("--primary-foreground", luma() > 0.55 ? "#09090b" : "#ffffff");
+  // Text on the accent color: black or white, whichever is easier to read.
+  const linear = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  const light = 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+  const onWhite = 1.05 / (light + 0.05), onBlack = (light + 0.05) / 0.0535;
+  root.setProperty("--primary-foreground", onBlack >= onWhite ? "#09090b" : "#ffffff");
 }
 
 // -------------------------------------------------------------- transport --

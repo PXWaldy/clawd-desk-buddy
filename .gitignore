@@ -4,3 +4,4 @@
 *.bin
 !docs/**/*.bin
 src/web_assets.h
+.impeccable/
