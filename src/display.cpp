@@ -15,6 +15,9 @@ class PanelClawd : public lgfx::Panel_JD9853 {
 protected:
     const uint8_t* getInitCommands(uint8_t listno) const override {
         static constexpr uint8_t commands[] = {
+            // LovyanGFX waits only 64 ms after the hardware reset. Give the
+            // panel more time before sleep out by sending a NOP first.
+            0x00, 0 + CMD_INIT_DELAY, 120,
             0x11, 0 + CMD_INIT_DELAY, 120,   // sleep out
             0xDF, 2, 0x98, 0x53,             // unlock vendor commands
             0xB2, 1, 0x23,
@@ -45,6 +48,10 @@ protected:
             0xDE, 1, 0x00,                   // back to page 0
             0x35, 1, 0x00,                   // tearing effect line on
             0x3A, 1, 0x05,                   // 16 bit per pixel
+            0xDE, 1, 0x02,                   // register page 2
+            0xE5, 3, 0x00, 0x02, 0x00,       // must be written last, see vendor sequence
+            0xDE, 1, 0x00,                   // back to page 0
+            0x21, 0 + CMD_INIT_DELAY, 10,    // inversion on (IPS)
             0x29, 0 + CMD_INIT_DELAY, 10,    // display on
             0xFF, 0xFF,                      // end of list
         };
