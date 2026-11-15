@@ -40,12 +40,7 @@ main { max-width: 720px; margin: 0 auto; padding: 40px 16px 64px; display: grid;
 
 /* ---- header */
 header { display: flex; align-items: center; gap: 16px; padding: 0 4px 8px; }
-.face { width: 88px; height: 47px; border-radius: 8px; background: var(--primary); position: relative; flex: none; }
-.face i { position: absolute; top: 12px; width: 12px; height: 23px; background: #000; animation: blink 5s infinite; transform-origin: center 60%; }
-.face i:first-child { left: 18px; }
-.face i:last-child { right: 18px; }
-@keyframes blink { 0%, 46%, 50%, 100% { transform: scaleY(1); } 48% { transform: scaleY(.1); } }
-@media (prefers-reduced-motion: reduce) { .face i { animation: none; } }
+.face { width: 88px; height: 47px; border-radius: 8px; background: var(--primary); flex: none; display: block; }
 h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -.02em; line-height: 1.3; }
 header p { margin: 2px 0 0; color: var(--muted-foreground); font-size: 14px; }
 
@@ -93,7 +88,7 @@ footer p { margin-bottom: 6px; }
 <body>
 <main>
   <header>
-    <div class="face" aria-hidden="true"><i></i><i></i></div>
+    <canvas class="face" id="face" width="320" height="172" aria-hidden="true"></canvas>
     <div>
       <h1>Clawd Desk Buddy</h1>
       <p>Flash the firmware from your browser, then set up WiFi in the same window.</p>
@@ -147,6 +142,105 @@ footer p { margin-bottom: 6px; }
   </footer>
 </main>
 <script>
+// ---- face in the header: cycles through the expressions of the buddy
+// Simplified copy of the eye shapes in the firmware, same as in the web UI.
+// [w, h, dy, topCut, botCut, slant] for the left and the right eye.
+const SHAPES = {
+  normal:     { l: [44, 84, 0, 0, 0, 0] },
+  happy:      { l: [52, 72, -4, 0, 0, 0], chevron: true, blush: true },
+  in_love:    { l: [60, 84, 0, 0, 0, 0], heart: true },
+  excited:    { l: [60, 96, -4, 0, 0, 0], sparkle: true },
+  curious:    { l: [48, 96, -6, 0, 0, 0], r: [44, 84, 6, 40, 0, 8] },
+  surprised:  { l: [52, 112, 0, 0, 0, 0] },
+  suspicious: { l: [52, 84, 0, 36, 20, 0], dx: 16 },
+  sleepy:     { l: [48, 84, 6, 50, 0, 0], zzz: true },
+  sad:        { l: [44, 80, 10, 8, 0, -24] },
+  grumpy:     { l: [52, 76, 0, 4, 0, 28], angry: true },
+  closed:     { l: [48, 8, 4, 0, 0, 0] },   // only used for the blink between two expressions
+};
+const ORDER = ["normal", "happy", "curious", "excited", "in_love", "surprised", "suspicious", "sleepy", "sad", "grumpy"];
+const HEART = [0b0110110, 0b1111111, 0b1111111, 0b0111110, 0b0011100, 0b0001000];
+const ZED = [0b11111, 0b00010, 0b00100, 0b01000, 0b11111];
+const G = 4;
+const snap = v => Math.round(v / G) * G;
+
+function blocks(ctx, rows, cols, cx, cy, cell, color) {
+  ctx.fillStyle = color;
+  const x0 = cx - cols * cell / 2, y0 = cy - rows.length * cell / 2;
+  rows.forEach((row, r) => {
+    for (let c = 0; c < cols; c++) {
+      if (row & (1 << (cols - 1 - c))) ctx.fillRect(x0 + c * cell, y0 + r * cell, cell, cell);
+    }
+  });
+}
+
+function drawFace(canvas, id) {
+  const ctx = canvas.getContext("2d");
+  const shape = SHAPES[id] || SHAPES.normal;
+  ctx.fillStyle = "#e05500";
+  ctx.fillRect(0, 0, 320, 172);
+  const eyeColor = shape.angry ? "#a80010" : "#000000";
+  [[86, shape.l, 1], [234, shape.r || shape.l, -1]].forEach(([restX, s, inner]) => {
+    const [w, h, dy, top, bot, slant] = s;
+    const x0 = restX - w / 2 + (shape.dx || 0);
+    const cy = 86 + dy;
+    ctx.fillStyle = eyeColor;
+    if (shape.chevron) {
+      const thick = G * 5, span = w - thick, rows = h / G;
+      for (let j = 0; j < rows; j++) {
+        const v = (j + .5) / rows;
+        const off = snap((1 - Math.abs(2 * v - 1)) * span);
+        ctx.fillRect(inner > 0 ? x0 + off : x0 + span - off, cy - h / 2 + j * G, thick, G);
+      }
+      return;
+    }
+    const cols = Math.round(w / G);
+    for (let i = 0; i < cols; i++) {
+      const u = ((i + .5) / cols - .5) * inner;
+      const ys = snap(cy - h / 2 + top + slant * u), ye = snap(cy + h / 2 - bot);
+      if (ye - ys >= G) ctx.fillRect(x0 + i * G, ys, G, ye - ys);
+    }
+    if (shape.heart) blocks(ctx, HEART, 7, x0 + w / 2, cy, 5, "#ffd1e0");
+    if (shape.sparkle) {
+      ctx.fillStyle = "#fff4d6";
+      ctx.fillRect(x0 + 8, cy - h / 2 + 12, 16, 16);
+      ctx.fillRect(x0 + w - 20, cy + h / 2 - 28, 8, 8);
+    }
+  });
+  if (shape.blush) {
+    ctx.fillStyle = "#ffa0a0";
+    for (let k = 0; k < 3; k++) {
+      ctx.fillRect(50 + k * 14, 130, 8, 8);
+      ctx.fillRect(262 - k * 14, 130, 8, 8);
+    }
+  }
+  if (shape.heart) {
+    blocks(ctx, HEART, 7, 160, 40, 3, "#ffd1e0");
+    blocks(ctx, HEART, 7, 296, 120, 2, "#ffd1e0");
+  }
+  if (shape.sparkle) {
+    blocks(ctx, [0b010, 0b111, 0b010], 3, 160, 50, 4, "#fff4d6");
+    blocks(ctx, [0b010, 0b111, 0b010], 3, 24, 120, 4, "#fff4d6");
+  }
+  if (shape.zzz) {
+    blocks(ctx, ZED, 5, 282, 48, 3, "#ffffff");
+    blocks(ctx, ZED, 5, 300, 24, 2, "#ffffff");
+  }
+}
+
+const face = document.getElementById("face");
+let shown = 0;
+drawFace(face, ORDER[shown]);
+// People who asked their system for less motion get the calm normal face only.
+if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  setInterval(() => {
+    if (document.hidden) return;
+    shown = (shown + 1) % ORDER.length;
+    drawFace(face, "closed");                              // short blink,
+    setTimeout(() => drawFace(face, ORDER[shown]), 130);   // then the next expression
+  }, 2600);
+}
+
 // Show which firmware version the button installs
 fetch("/clawd-desk-buddy/manifest.json").then(r => r.json()).then(m => {
   document.getElementById("version").textContent = "firmware " + m.version;
