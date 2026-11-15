@@ -38,6 +38,11 @@ body {
 }
 main { max-width: 720px; margin: 0 auto; padding: 40px 16px 64px; display: grid; gap: 16px; }
 
+/* ---- link back to the main site */
+.home { justify-self: start; margin: 0 4px 8px; font: 500 13px/1 var(--mono); color: var(--muted-foreground); text-decoration: none; padding: 6px 0; }
+.home::before { content: "\2190\00a0"; color: var(--primary); }
+.home:hover { color: var(--foreground); }
+
 /* ---- header */
 header { display: flex; align-items: center; gap: 16px; padding: 0 4px 8px; }
 .face { width: 88px; height: 47px; border-radius: 8px; background: var(--primary); flex: none; display: block; }
@@ -88,6 +93,7 @@ footer p { margin-bottom: 6px; }
 </head>
 <body>
 <main>
+  <a class="home" href="/">pxwaldy.com</a>
   <header>
     <canvas class="face" id="face" width="320" height="172" aria-hidden="true"></canvas>
     <div>
