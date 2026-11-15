@@ -37,7 +37,7 @@ section {
   padding: 18px; margin-bottom: 16px;
 }
 h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 14px; }
-.row { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 48px; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 48px; padding: 10px 0; }
 .row + .row { border-top: 1px solid var(--line); }
 .row > span { min-width: 0; }
 .row small, .note { color: var(--muted); font-size: 13px; }
@@ -91,8 +91,8 @@ input[type=color] {
 .time { display: flex; align-items: center; gap: 6px; }
 .time select { appearance: none; -webkit-appearance: none; padding: 0 4px; width: 58px; flex: none; text-align: center; text-align-last: center; cursor: pointer; }
 /* two buttons that work like a switch with labels */
-.seg { display: flex; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; min-height: 48px; }
-.seg button { flex: 1; border: 0; border-radius: 0; min-height: 46px; padding: 0 14px; background: var(--bg); color: var(--muted); white-space: nowrap; }
+.seg { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); min-height: 48px; }
+.seg button { flex: 1; border: 0; border-radius: 8px; min-height: 38px; padding: 0 12px; background: none; color: var(--muted); white-space: nowrap; }
 .seg button[aria-pressed=true] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
 .field label.filebtn { display: inline-flex; align-items: center; position: relative; white-space: nowrap; font-size: inherit; color: var(--text); margin: 0; }
 .filebtn input { position: absolute; width: 1px; height: 1px; opacity: 0; }
