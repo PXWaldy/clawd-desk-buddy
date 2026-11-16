@@ -41,7 +41,7 @@ void update(uint32_t nowMs);
 // Current state (for the web UI)
 Expression baseExpression();
 bool randomMode();
-uint16_t enabledMask();
+uint32_t enabledMask();
 uint32_t randomIntervalS();
 
 // False while the buddy sleeps (schedule or display switched off). The

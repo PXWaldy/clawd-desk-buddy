@@ -12,7 +12,7 @@ struct Settings {
     uint32_t colorEye;
     uint8_t brightness;        // percent
     bool displayOn;
-    uint16_t enabledMask;      // one bit per expression
+    uint32_t enabledMask;      // one bit per expression
     bool randomMode;
     uint16_t randomIntervalS;
 

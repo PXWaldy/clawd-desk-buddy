@@ -13,7 +13,7 @@ namespace {
 QueueHandle_t queue = nullptr;
 
 Expression base = Expression::Normal;   // the style to return to after a reaction
-uint16_t enabled = ALL_EXPRESSIONS_MASK;
+uint32_t enabled = ALL_EXPRESSIONS_MASK;
 bool randomOn = true;
 uint32_t randomIntervalSeconds = cfg::RANDOM_INTERVAL_DEFAULT_S;
 uint32_t nextRandomMs = 0;
@@ -168,7 +168,7 @@ void handle(const behavior::Event& ev, uint32_t now) {
         stateVersion++;
         break;
     case EventType::SetEnabledMask: {
-        const uint16_t mask = (uint16_t)ev.value & ALL_EXPRESSIONS_MASK;
+        const uint32_t mask = (uint32_t)ev.value & ALL_EXPRESSIONS_MASK;
         if (mask == 0) break;               // at least one must stay enabled
         enabled = mask;
         if (!isEnabled(base)) {
@@ -240,7 +240,7 @@ void update(uint32_t now) {
 
 Expression baseExpression() { return base; }
 bool randomMode() { return randomOn; }
-uint16_t enabledMask() { return enabled; }
+uint32_t enabledMask() { return enabled; }
 uint32_t randomIntervalS() { return randomIntervalSeconds; }
 bool screenLit() { return power != Power::Asleep; }
 uint32_t version() { return stateVersion; }

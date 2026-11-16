@@ -35,7 +35,9 @@ Returns the complete state.
 | `defaults`, `accents` | object | Default and accent colors |
 
 Expression ids: `normal`, `happy`, `in_love`, `excited`, `curious`,
-`surprised`, `suspicious`, `sleepy`, `sad`, `grumpy`.
+`surprised`, `suspicious`, `sleepy`, `sad`, `grumpy`, `bored`, `shy`, `wink`,
+`thinking`, `confused`, `dizzy`, `content`, `vibing`, `cool`, `ko`, `sweat`,
+`money`, `touched`, `starstruck`.
 
 ### `POST /api/state`
 

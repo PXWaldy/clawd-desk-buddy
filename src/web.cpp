@@ -154,6 +154,7 @@ String stateJson() {
     accents["heart"] = colorToHex(cfg::COLOR_HEART);
     accents["sparkle"] = colorToHex(cfg::COLOR_SPARKLE);
     accents["angry"] = colorToHex(cfg::COLOR_ANGRY);
+    accents["money"] = colorToHex(cfg::COLOR_MONEY);
 
     JsonObject wifi = doc["wifi"].to<JsonObject>();
     wifi["connected"] = net::connected();
@@ -203,7 +204,7 @@ const char* applyPatch(JsonVariantConst patch) {
         behavior::post(EventType::SetRandomInterval, value);
     }
     if (patch["enabled"].is<JsonArrayConst>()) {
-        uint16_t mask = 0;
+        uint32_t mask = 0;
         for (JsonVariantConst id : patch["enabled"].as<JsonArrayConst>()) {
             const int index = expressionFromId(id.as<const char*>());
             if (index >= 0) mask |= 1u << index;

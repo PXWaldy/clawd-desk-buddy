@@ -14,14 +14,20 @@ using cfg::GRID;
 const char* expressionName(Expression e) {
     static const char* const names[EXPRESSION_COUNT] = {
         "Normal", "Happy", "In love", "Excited", "Curious",
-        "Surprised", "Suspicious", "Sleepy", "Sad", "Grumpy"};
+        "Surprised", "Suspicious", "Sleepy", "Sad", "Grumpy",
+        "Bored", "Shy", "Wink", "Thinking", "Confused",
+        "Dizzy", "Content", "Vibing", "Cool", "K.O.",
+        "Sheepish", "Money", "Touched", "Starstruck"};
     return (uint8_t)e < EXPRESSION_COUNT ? names[(uint8_t)e] : "?";
 }
 
 const char* expressionId(Expression e) {
     static const char* const ids[EXPRESSION_COUNT] = {
         "normal", "happy", "in_love", "excited", "curious",
-        "surprised", "suspicious", "sleepy", "sad", "grumpy"};
+        "surprised", "suspicious", "sleepy", "sad", "grumpy",
+        "bored", "shy", "wink", "thinking", "confused",
+        "dizzy", "content", "vibing", "cool", "ko",
+        "sweat", "money", "touched", "starstruck"};
     return (uint8_t)e < EXPRESSION_COUNT ? ids[(uint8_t)e] : "?";
 }
 
@@ -31,10 +37,20 @@ namespace {
 // Expression definitions
 // ---------------------------------------------------------------------------
 
-enum class Shape : uint8_t { Block, Chevron };            // Chevron = "> <"
-enum class Pupil : uint8_t { None, Heart, Sparkle };
+// Chevron = "> <", ArcUp = "^ ^", ArcDown = closed and relaxed, Cross = "x x",
+// Shades = sunglasses across both eyes
+enum class Shape : uint8_t { Block, Chevron, ArcUp, ArcDown, Cross, Shades };
+enum class Pupil : uint8_t { None, Heart, Sparkle, Dollar, Star, Spiral, Glossy };
 enum class Gaze : uint8_t { None, Wander, Sides };
-enum class Effect : uint8_t { None, Blush, Hearts, Stars, Zzz, Tear };
+enum class Effect : uint8_t {
+    None, Blush, Hearts, Stars, Zzz, Tear,
+    Dots,       // three dots that appear one after another
+    Question,   // a bobbing question mark between the eyes
+    Orbit,      // stars circling above the head
+    Notes,      // rising music notes
+    Sweat,      // a drop running down the side
+    Money,      // rising dollar signs
+};
 
 // Geometry of one eye, relative to its resting position.
 struct EyeShape {
@@ -112,7 +128,78 @@ const ExpressionDef DEFS[EXPRESSION_COUNT] = {
     {Shape::Block, Pupil::None, Effect::None, Gaze::None,
      {52, 76, 0, 0, 4, 0, 28}, {52, 76, 0, 0, 4, 0, 28},
      0, 0, 4000, 8000, 1},
+
+    // Bored: heavy lids, a long stare to the side, then an eye roll
+    {Shape::Block, Pupil::None, Effect::None, Gaze::None,
+     {48, 84, 0, 4, 44, 0, 0}, {48, 84, 0, 4, 44, 0, 0},
+     0, 0, 4000, 7000, 0},
+
+    // Shy: small eyes that look down and away, blushing, with a quick peek
+    {Shape::Block, Pupil::None, Effect::Blush, Gaze::None,
+     {40, 60, 0, 10, 0, 0, 0}, {40, 60, 0, 10, 0, 0, 0},
+     0, 0, 3000, 5000, 0},
+
+    // Wink: the right eye squeezes shut now and then
+    {Shape::Block, Pupil::None, Effect::None, Gaze::None,
+     {W, H, 0, 0, 0, 0, 0}, {W, H, 0, 0, 0, 0, 0},
+     0, 0, 0, 0, 0},
+
+    // Thinking: looks up to the side while three dots run through
+    {Shape::Block, Pupil::None, Effect::Dots, Gaze::None,
+     {44, 76, 12, -10, 8, 0, 0}, {44, 76, 12, -10, 8, 0, 0},
+     0, 0, 3500, 6000, 0},
+
+    // Confused: the eyes take turns being the big one, with a question mark
+    {Shape::Block, Pupil::None, Effect::Question, Gaze::None,
+     {48, 96, 0, -6, 0, 0, 0}, {40, 56, 0, 8, 0, 0, -10},
+     0, 0, 4000, 8000, 0},
+
+    // Dizzy: spinning spirals in swaying eyes
+    {Shape::Block, Pupil::Spiral, Effect::None, Gaze::None,
+     {56, 84, 0, 0, 0, 0, 0}, {56, 84, 0, 0, 0, 0, 0},
+     0, 0, 0, 0, 0},
+
+    // Content: closed "^ ^" eyes, breathing calmly
+    {Shape::ArcUp, Pupil::None, Effect::None, Gaze::None,
+     {56, 24, 0, 0, 0, 0, 0}, {56, 24, 0, 0, 0, 0, 0},
+     0, 0, 0, 0, 0},
+
+    // Vibing: eyes closed, nodding to the beat, music notes rising
+    {Shape::ArcDown, Pupil::None, Effect::Notes, Gaze::None,
+     {52, 20, 0, 0, 0, 0, 0}, {52, 20, 0, 0, 0, 0, 0},
+     0, 0, 0, 0, 0},
+
+    // Cool: sunglasses with a glint
+    {Shape::Shades, Pupil::None, Effect::None, Gaze::None,
+     {68, 44, 0, 0, 0, 0, 0}, {68, 44, 0, 0, 0, 0, 0},
+     0, 0, 0, 0, 0},
+
+    // K.O.: "x x" eyes with stars circling above
+    {Shape::Cross, Pupil::None, Effect::Orbit, Gaze::None,
+     {52, 44, 0, 8, 0, 0, 0}, {52, 44, 0, 8, 0, 0, 0},
+     0, 0, 0, 0, 0},
+
+    // Sheepish: laughing "^ ^" eyes and a drop of sweat
+    {Shape::ArcUp, Pupil::None, Effect::Sweat, Gaze::None,
+     {56, 24, 0, 0, 0, 0, 0}, {56, 24, 0, 0, 0, 0, 0},
+     0, 0, 0, 0, 0},
+
+    // Money: dollar signs as pupils, more of them floating around
+    {Shape::Block, Pupil::Dollar, Effect::Money, Gaze::None,
+     {60, 84, 0, 0, 0, 0, 0}, {60, 84, 0, 0, 0, 0, 0},
+     0, 0, 3000, 6000, 0},
+
+    // Touched: big glossy eyes with tears welling up that never fall
+    {Shape::Block, Pupil::Glossy, Effect::None, Gaze::None,
+     {60, 92, 0, 0, 0, 0, -10}, {60, 92, 0, 0, 0, 0, -10},
+     0, 0, 5000, 9000, 0},
+
+    // Starstruck: stars as pupils, twinkling all around
+    {Shape::Block, Pupil::Star, Effect::Stars, Gaze::None,
+     {60, 96, 0, -4, 0, 0, 0}, {60, 96, 0, -4, 0, 0, 0},
+     0, 0, 4000, 8000, 0},
 };
+static_assert(sizeof(DEFS) / sizeof(DEFS[0]) == EXPRESSION_COUNT, "one definition per expression");
 
 const ExpressionDef& def(Expression e) { return DEFS[(uint8_t)e]; }
 
@@ -121,6 +208,9 @@ struct Pose {
     EyeShape left, right;
     float closed;    // 0 = open, 1 = lids shut (blink)
     bool pulse;      // toggles for pulsing pupils
+    bool wink;       // the right eye is drawn as a squeezed "<"
+    float closedRight;   // extra lid closing of the right eye only
+    uint32_t ageMs;  // time since the expression started, for timed details
 };
 
 // ---------------------------------------------------------------------------
@@ -157,7 +247,7 @@ uint32_t burstStartMs = 0;          // 0 = idle
 uint32_t nextBurstMs = 0;
 
 // Particles (hearts, stars, z, tears)
-enum class ParticleType : uint8_t { Heart, Star, Zzz, Tear };
+enum class ParticleType : uint8_t { Heart, Star, Zzz, Tear, Note, Drop, Dollar };
 struct Particle {
     bool alive;
     ParticleType type;
@@ -299,7 +389,8 @@ int32_t burstTime(uint32_t now, uint32_t lengthMs, uint32_t pauseMinMs, uint32_t
 // The pose of an expression including its idle animation.
 Pose idlePose(Expression e, uint32_t now) {
     const ExpressionDef& d = def(e);
-    Pose p = {d.left, d.right, blinkAmount(now), false};
+    Pose p = {d.left, d.right, blinkAmount(now), false, false, 0, now - expressionStartMs};
+    const uint32_t age = p.ageMs;
 
     p.left.dx += gazeX;
     p.right.dx += gazeX;
@@ -375,6 +466,138 @@ Pose idlePose(Expression e, uint32_t now) {
         }
         break;
     }
+    case Expression::Bored: {
+        // Stares to one side, then rolls the eyes over to the other side.
+        const uint32_t u = age % 8000;
+        const float side = (age / 8000) % 2 ? -1.0f : 1.0f;
+        float gx = side * 16, gy = 0, open = 0;
+        if (u > 6500) {
+            const float a = (u - 6500) / 1500.0f * PI;
+            gx = side * 16 * cosf(a);
+            gy = -12 * sinf(a);
+            open = 14 * sinf(a);
+        }
+        for (EyeShape* s : {&p.left, &p.right}) {
+            s->dx += gx;
+            s->dy += gy;
+            s->topCut -= open;
+        }
+        break;
+    }
+    case Expression::Shy: {
+        // Looks down and away, with a short peek to the front.
+        const uint32_t u = age % 4600;
+        float peek = 0;
+        if (u >= 4100) peek = smooth(1 - (u - 4100) / 500.0f);
+        else if (u >= 3500) peek = 1;
+        else if (u >= 3200) peek = smooth((u - 3200) / 300.0f);
+        for (EyeShape* s : {&p.left, &p.right}) {
+            s->dx += mixf(-14, 0, peek);
+            s->dy += mixf(6, -2, peek);
+        }
+        break;
+    }
+    case Expression::Wink: {
+        const uint32_t u = age % 3600;
+        if (u >= 2500 && u < 3400) {
+            p.wink = true;
+            p.left.dy -= GRID;
+            p.right.w = 52;
+            p.right.h = 56;
+            p.right.dy += GRID;
+        } else if (u >= 3400) {
+            p.closedRight = 1 - (u - 3400) / 200.0f;
+        } else if (u >= 2430) {
+            p.closedRight = (u - 2430) / 70.0f;
+        }
+        break;
+    }
+    case Expression::Confused: {
+        // The big and the small eye swap sides.
+        const float phase = (age % 3200) / 3200.0f;
+        float a = 0;
+        if (phase >= 0.85f) a = 1 - smooth((phase - 0.85f) / 0.15f);
+        else if (phase >= 0.5f) a = 1;
+        else if (phase >= 0.35f) a = smooth((phase - 0.35f) / 0.15f);
+        const EyeShape big = p.left, small = p.right;
+        p.left = mixShape(big, small, a);
+        p.right = mixShape(small, big, a);
+        break;
+    }
+    case Expression::Dizzy: {
+        // The eyes sway against each other.
+        const float a = age / 450.0f;
+        p.left.dx += 4 * cosf(a);
+        p.right.dx += 4 * cosf(a);
+        p.left.dy += 6 * sinf(a);
+        p.right.dy -= 6 * sinf(a);
+        break;
+    }
+    case Expression::Content: {
+        // Calm breathing
+        const float bob = (age / 1100) % 2 ? GRID : 0;
+        p.left.dy += bob;
+        p.right.dy += bob;
+        break;
+    }
+    case Expression::Vibing: {
+        // Nods to the beat.
+        const bool beat = (age / 380) % 2;
+        for (EyeShape* s : {&p.left, &p.right}) {
+            s->dx += beat ? GRID * 2 : -GRID * 2;
+            s->dy += beat ? GRID : 0;
+        }
+        break;
+    }
+    case Expression::Cool: {
+        // Lifts the glasses for a moment.
+        const uint32_t u = age % 4200;
+        if (u > 3700 && u < 4000) {
+            p.left.dy -= GRID;
+            p.right.dy -= GRID;
+        }
+        break;
+    }
+    case Expression::Ko: {
+        // Twitch
+        const int32_t t = burstTime(now, 360, 2000, 4000);
+        if (t >= 0 && (t / 60) % 2) {
+            p.left.dx += GRID;
+            p.right.dx += GRID;
+        }
+        break;
+    }
+    case Expression::Sweat: {
+        // Nervous little hops
+        const int32_t t = burstTime(now, 480, 1500, 3000);
+        if (t >= 0 && (t / 120) % 2) {
+            p.left.dy -= GRID;
+            p.right.dy -= GRID;
+        }
+        break;
+    }
+    case Expression::Money:
+        p.pulse = (now / 420) % 2;
+        break;
+    case Expression::Touched: {
+        // The water in the eyes wobbles, now and then the eyes tremble.
+        p.pulse = (now / 260) % 2;
+        const int32_t t = burstTime(now, 400, 2200, 4000);
+        if (t >= 0 && (t / 70) % 2) {
+            p.left.dx += GRID;
+            p.right.dx += GRID;
+        }
+        break;
+    }
+    case Expression::Starstruck: {
+        p.pulse = (now / 300) % 2;
+        const int32_t t = burstTime(now, 600, 1600, 3200);
+        if (t >= 0 && (t / 100) % 2) {
+            p.left.dy -= GRID;
+            p.right.dy -= GRID;
+        }
+        break;
+    }
     default:
         break;
     }
@@ -418,10 +641,72 @@ void drawStar(lgfx::LGFX_Sprite& c, int centerX, int centerY, int cell, bool big
     else drawBlocks(c, dot, 1, 1, centerX, centerY, cell, color);
 }
 
+void drawPlus(lgfx::LGFX_Sprite& c, int centerX, int centerY, uint8_t color) {
+    drawStar(c, centerX, centerY, GRID, true, color);
+}
+
+void drawDollar(lgfx::LGFX_Sprite& c, int centerX, int centerY, int cell, uint8_t color) {
+    static const uint8_t rows[7] = {0b00100, 0b01111, 0b10100, 0b01110,
+                                    0b00101, 0b11110, 0b00100};
+    drawBlocks(c, rows, 7, 5, centerX, centerY, cell, color);
+}
+
+void drawStarPupil(lgfx::LGFX_Sprite& c, int centerX, int centerY, int cell, uint8_t color) {
+    static const uint8_t rows[7] = {0b0001000, 0b0001000, 0b0011100, 0b1111111,
+                                    0b0111110, 0b0110110, 0b1100011};
+    drawBlocks(c, rows, 7, 7, centerX, centerY, cell, color);
+}
+
+void drawQuestion(lgfx::LGFX_Sprite& c, int centerX, int centerY, int cell, uint8_t color) {
+    static const uint8_t rows[7] = {0b01110, 0b10001, 0b00001, 0b00110,
+                                    0b00100, 0b00000, 0b00100};
+    drawBlocks(c, rows, 7, 5, centerX, centerY, cell, color);
+}
+
+void drawNote(lgfx::LGFX_Sprite& c, int centerX, int centerY, int cell, uint8_t color) {
+    static const uint8_t rows[5] = {0b00111, 0b00101, 0b00100, 0b11100, 0b11100};
+    drawBlocks(c, rows, 5, 5, centerX, centerY, cell, color);
+}
+
+void drawDrop(lgfx::LGFX_Sprite& c, int centerX, int centerY, int cell, uint8_t color) {
+    static const uint8_t rows[4] = {0b010, 0b111, 0b111, 0b010};
+    drawBlocks(c, rows, 4, 3, centerX, centerY, cell, color);
+}
+
+// A square spiral, turned clockwise in quarter steps.
+void drawSpiral(lgfx::LGFX_Sprite& c, int centerX, int centerY, int cell, uint8_t quarterTurns,
+                uint8_t color) {
+    static const uint8_t rows[7] = {0b1111111, 0b1000000, 0b1011111, 0b1010001,
+                                    0b1011101, 0b1000001, 0b1111111};
+    constexpr int n = 7;
+    const int x0 = centerX - n * cell / 2;
+    const int y0 = centerY - n * cell / 2;
+    for (int r = 0; r < n; r++) {
+        for (int col = 0; col < n; col++) {
+            int sr = r, sc = col;
+            for (uint8_t k = 0; k < quarterTurns % 4; k++) {
+                const int old = sr;
+                sr = n - 1 - sc;
+                sc = old;
+            }
+            if (rows[sr] & (1 << (n - 1 - sc))) {
+                c.fillRect(x0 + col * cell, y0 + r * cell, cell, cell, color);
+            }
+        }
+    }
+}
+
+// The line a closed eye shrinks to. Used by the shapes that have no lids.
+void drawClosedLine(lgfx::LGFX_Sprite& c, int restX, const EyeShape& s) {
+    const int w = 48;
+    c.fillRect(restX - w / 2 + snap(s.dx), cfg::EYE_CENTER_Y + snap(s.dy) + GRID, w, GRID * 2,
+               cfg::PAL_EYE);
+}
+
 // Draws one block eye. `inner` is +1 if the inner side (towards the nose) is
 // on the right, -1 if it is on the left.
 void drawBlockEye(lgfx::LGFX_Sprite& c, int restX, const EyeShape& s, float closed,
-                  int inner, Pupil pupil, bool pulse) {
+                  int inner, Pupil pupil, bool pulse, uint32_t ageMs) {
     const int w = max(GRID * 2, snap(s.w));
     const int columns = w / GRID;
     const int x0 = restX - w / 2 + snap(s.dx);
@@ -458,6 +743,22 @@ void drawBlockEye(lgfx::LGFX_Sprite& c, int restX, const EyeShape& s, float clos
         c.fillRect(x0 + GRID * 2, snap(top0) + GRID * 3, big, big, cfg::PAL_SPARKLE);
         c.fillRect(x0 + w - GRID * 5, snap(bottom0) - GRID * 7, GRID * 2, GRID * 2,
                    cfg::PAL_SPARKLE);
+    } else if (pupil == Pupil::Dollar) {
+        drawDollar(c, midX, midY, pulse ? 5 : 4, cfg::PAL_MONEY);
+    } else if (pupil == Pupil::Star) {
+        drawStarPupil(c, midX, midY, pulse ? 5 : 4, cfg::PAL_SPARKLE);
+    } else if (pupil == Pupil::Spiral) {
+        // The two eyes spin in opposite directions.
+        const uint8_t step = (ageMs / 140) % 4;
+        drawSpiral(c, midX, midY, GRID, inner > 0 ? step : (4 - step) % 4, cfg::PAL_SPARKLE);
+    } else if (pupil == Pupil::Glossy) {
+        // Two highlights and water standing at the lower lid.
+        const int wobble = pulse ? GRID : 0;
+        c.fillRect(x0 + GRID * 2, snap(top0) + GRID * 4, GRID * 4, GRID * 4, cfg::PAL_SPARKLE);
+        c.fillRect(x0 + w - GRID * 6, snap(top0) + GRID * 10, GRID * 2, GRID * 2,
+                   cfg::PAL_SPARKLE);
+        c.fillRect(x0 + GRID, snap(bottom0) - GRID * 3 - wobble, w - GRID * 2,
+                   GRID * 2 + wobble, cfg::PAL_SPARKLE);
     }
 }
 
@@ -481,8 +782,74 @@ void drawChevronEye(lgfx::LGFX_Sprite& c, int restX, const EyeShape& s, float cl
     }
 }
 
-void drawBlush(lgfx::LGFX_Sprite& c) {
-    const int y = cfg::EYE_CENTER_Y + 44;
+// Draws one arc eye: "^" if `up`, otherwise the same arc hanging down.
+void drawArcEye(lgfx::LGFX_Sprite& c, int restX, const EyeShape& s, float closed, bool up) {
+    const int thickness = GRID * 4;
+    const int w = snap(s.w);
+    const int columns = w / GRID;
+    const float rise = s.h * (1 - closed);   // flattens while closing
+    const int x0 = restX - w / 2 + snap(s.dx);
+    const int y0 = snap(cfg::EYE_CENTER_Y + s.dy - (rise + thickness) / 2);
+    for (int i = 0; i < columns; i++) {
+        const float u = (i + 0.5f) / columns - 0.5f;
+        const int offset = snap(4 * u * u * rise);
+        const int y = up ? y0 + offset : y0 + snap(rise) - offset;
+        c.fillRect(x0 + i * GRID, y, GRID, thickness, cfg::PAL_EYE);
+    }
+}
+
+// Draws one "x" eye.
+void drawCrossEye(lgfx::LGFX_Sprite& c, int restX, const EyeShape& s, float closed) {
+    if (closed >= 0.5f) {
+        drawClosedLine(c, restX, s);
+        return;
+    }
+    constexpr int n = 11;                     // rows, each stroke is 3 blocks wide
+    const int x0 = restX - (n + 2) * GRID / 2 + snap(s.dx);
+    const int y0 = cfg::EYE_CENTER_Y + snap(s.dy) - n * GRID / 2;
+    for (int j = 0; j < n; j++) {
+        c.fillRect(x0 + j * GRID, y0 + j * GRID, GRID * 3, GRID, cfg::PAL_EYE);
+        c.fillRect(x0 + (n - 1 - j) * GRID, y0 + j * GRID, GRID * 3, GRID, cfg::PAL_EYE);
+    }
+}
+
+// Draws the sunglasses over both eyes.
+void drawShades(lgfx::LGFX_Sprite& c, int leftX, int rightX, const Pose& p) {
+    if (p.closed >= 0.5f) {
+        drawClosedLine(c, leftX, p.left);
+        drawClosedLine(c, rightX, p.right);
+        return;
+    }
+    const int w = snap(p.left.w), h = snap(p.left.h);
+    const int y = cfg::EYE_CENTER_Y - h / 2 + snap(p.left.dy);
+    // Bridge and temples in one bar
+    c.fillRect(0, y, cfg::SCREEN_W, GRID * 2, cfg::PAL_EYE);
+
+    const uint32_t sweep = p.ageMs % 3400;    // a glint crosses the lenses
+    for (const int centerX : {leftX, rightX}) {
+        const int x = centerX - w / 2 + snap(p.left.dx);
+        // Lens with stepped lower corners
+        c.fillRect(x, y, w, h - GRID * 2, cfg::PAL_EYE);
+        c.fillRect(x + GRID, y + h - GRID * 2, w - GRID * 2, GRID, cfg::PAL_EYE);
+        c.fillRect(x + GRID * 2, y + h - GRID, w - GRID * 4, GRID, cfg::PAL_EYE);
+        // Fixed highlight
+        for (int j = 0; j < 3; j++) {
+            c.fillRect(x + GRID * 5 - j * GRID, y + GRID * 2 + j * GRID, GRID * 2, GRID,
+                       cfg::PAL_SPARKLE);
+        }
+        if (sweep < 700) {
+            const int bandX = snap(x - 12 + sweep / 700.0f * (w + 52));
+            for (int j = 0; j < (h - GRID * 2) / GRID; j++) {
+                const int xs = max(x, bandX - j * GRID);
+                const int xe = min(x + w, bandX - j * GRID + GRID * 3);
+                if (xe > xs) c.fillRect(xs, y + j * GRID, xe - xs, GRID, cfg::PAL_SPARKLE);
+            }
+        }
+    }
+}
+
+void drawBlush(lgfx::LGFX_Sprite& c, int offsetY) {
+    const int y = cfg::EYE_CENTER_Y + offsetY;
     const int leftX = cfg::SCREEN_W / 2 - cfg::EYE_SPACING / 2;
     const int rightX = cfg::SCREEN_W / 2 + cfg::EYE_SPACING / 2;
     for (int k = 0; k < 3; k++) {
@@ -494,12 +861,66 @@ void drawBlush(lgfx::LGFX_Sprite& c) {
 void drawEyes(lgfx::LGFX_Sprite& c, Expression e, const Pose& p, Pupil pupil) {
     const int leftX = cfg::SCREEN_W / 2 - cfg::EYE_SPACING / 2;
     const int rightX = cfg::SCREEN_W / 2 + cfg::EYE_SPACING / 2;
-    if (def(e).shape == Shape::Chevron) {
+    switch (def(e).shape) {
+    case Shape::Chevron:
         drawChevronEye(c, leftX, p.left, p.closed, +1);
         drawChevronEye(c, rightX, p.right, p.closed, -1);
-    } else {
-        drawBlockEye(c, leftX, p.left, p.closed, +1, pupil, p.pulse);
-        drawBlockEye(c, rightX, p.right, p.closed, -1, pupil, p.pulse);
+        break;
+    case Shape::ArcUp:
+    case Shape::ArcDown:
+        drawArcEye(c, leftX, p.left, p.closed, def(e).shape == Shape::ArcUp);
+        drawArcEye(c, rightX, p.right, p.closed, def(e).shape == Shape::ArcUp);
+        break;
+    case Shape::Cross:
+        drawCrossEye(c, leftX, p.left, p.closed);
+        drawCrossEye(c, rightX, p.right, p.closed);
+        break;
+    case Shape::Shades:
+        drawShades(c, leftX, rightX, p);
+        break;
+    case Shape::Block:
+        drawBlockEye(c, leftX, p.left, p.closed, +1, pupil, p.pulse, p.ageMs);
+        if (p.wink) {
+            drawChevronEye(c, rightX, p.right, p.closed, -1);
+        } else {
+            drawBlockEye(c, rightX, p.right, max(p.closed, p.closedRight), -1, pupil, p.pulse,
+                         p.ageMs);
+        }
+        break;
+    }
+}
+
+// Details that are drawn on top of the eyes and follow the clock of the
+// expression instead of being particles.
+void drawOverlay(lgfx::LGFX_Sprite& c, Expression e, const Pose& p) {
+    const uint32_t age = p.ageMs;
+    switch (def(e).effect) {
+    case Effect::Dots: {
+        const int count = (age / 480) % 4;
+        for (int i = 0; i < count; i++) {
+            c.fillRect(280 + i * 14, 20, GRID * 2, GRID * 2, cfg::PAL_TEXT);
+        }
+        break;
+    }
+    case Effect::Question:
+        drawQuestion(c, cfg::SCREEN_W / 2, 42 - ((age / 500) % 2 ? GRID : 0), GRID,
+                     cfg::PAL_TEXT);
+        break;
+    case Effect::Orbit:
+        for (int k = 0; k < 3; k++) {
+            const float a = age / 700.0f + k * 2.094f;
+            const int x = snap(cfg::SCREEN_W / 2 + 60 * cosf(a));
+            const int y = snap(26 + 8 * sinf(a));
+            // The stars at the back of the circle are smaller.
+            drawStar(c, x, y, GRID, sinf(a) > -0.3f, cfg::PAL_SPARKLE);
+        }
+        break;
+    default:
+        break;
+    }
+    if (e == Expression::Wink && p.wink) {
+        const uint32_t u = age % 3600;
+        if (u > 2600 && u < 3150) drawPlus(c, 294, 44, cfg::PAL_SPARKLE);
     }
 }
 
@@ -547,6 +968,19 @@ void spawnParticles(Effect effect, uint32_t now) {
               cfg::EYE_CENTER_Y + 56, 0, 46, 1300, GRID, now);
         nextParticleMs = now + randomBetween(3500, 7000);
         break;
+    case Effect::Notes:
+        spawn(ParticleType::Note, freeX(), 150, (float)random(-6, 7), -42, 2400, 3, now);
+        nextParticleMs = now + randomBetween(700, 1000);
+        break;
+    case Effect::Sweat:
+        spawn(ParticleType::Drop, 292, 24, 0, 56, 720, GRID, now);
+        nextParticleMs = now + 2000;
+        break;
+    case Effect::Money:
+        spawn(ParticleType::Dollar, freeX(), (float)random(120, 160),
+              (float)random(-6, 7), -30, 2400, 2, now);
+        nextParticleMs = now + randomBetween(500, 950);
+        break;
     default:
         break;
     }
@@ -578,6 +1012,15 @@ void updateAndDrawParticles(lgfx::LGFX_Sprite& c, uint32_t now, float dt) {
             break;
         case ParticleType::Tear:
             c.fillRect(snap(p.x), snap(p.y), p.cell, p.cell * 2, cfg::PAL_SPARKLE);
+            break;
+        case ParticleType::Note:
+            drawNote(c, x, y, p.cell, cfg::PAL_TEXT);
+            break;
+        case ParticleType::Drop:
+            drawDrop(c, snap(p.x), snap(p.y), p.cell, cfg::PAL_SPARKLE);
+            break;
+        case ParticleType::Dollar:
+            drawDollar(c, x, y, p.cell, cfg::PAL_MONEY);
             break;
         }
     }
@@ -688,7 +1131,7 @@ void draw(uint32_t now) {
         } else if (t < 0.5f) {
             // Different shapes: close the old eyes, then open the new ones.
             shown = previous;
-            pose = {from.left, from.right, t * 2, false};
+            pose = {from.left, from.right, t * 2, false, false, 0, 0};
             pupil = from.pupil;
         } else {
             pose.closed = max(pose.closed, (1 - t) * 2);
@@ -697,8 +1140,13 @@ void draw(uint32_t now) {
 
     drawEyes(c, shown, pose, pupil);
 
-    if (def(shown).effect == Effect::Blush && pose.closed < 0.9f) drawBlush(c);
-    if (t >= 1) spawnParticles(d.effect, now);
+    if (def(shown).effect == Effect::Blush && pose.closed < 0.9f) {
+        drawBlush(c, shown == Expression::Shy ? 54 : 44);
+    }
+    if (t >= 1) {
+        drawOverlay(c, current, pose);
+        spawnParticles(d.effect, now);
+    }
     updateAndDrawParticles(c, now, dt);
 }
 

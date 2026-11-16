@@ -151,6 +151,7 @@ constexpr uint32_t COLOR_HEART   = 0xFFD1E0;
 constexpr uint32_t COLOR_SPARKLE = 0xFFF4D6;
 constexpr uint32_t COLOR_ANGRY   = 0xA80010;
 constexpr uint32_t COLOR_TEXT    = 0xFFFFFF;
+constexpr uint32_t COLOR_MONEY   = 0x8CF5A0;
 
 // Palette slots of the 4 bit framebuffer
 enum PaletteIndex : uint8_t {
@@ -161,6 +162,7 @@ enum PaletteIndex : uint8_t {
     PAL_SPARKLE,
     PAL_ANGRY,
     PAL_TEXT,
+    PAL_MONEY,
     PAL_COUNT
 };
 

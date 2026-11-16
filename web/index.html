@@ -439,7 +439,28 @@ const SHAPES = {
   sleepy:     { l: [48, 84, 6, 50, 0, 0], zzz: true },
   sad:        { l: [44, 80, 10, 8, 0, -24] },
   grumpy:     { l: [52, 76, 0, 4, 0, 28], angry: true },
+  bored:      { l: [48, 84, 4, 44, 0, 0], dx: 16 },
+  shy:        { l: [40, 60, 16, 0, 0, 0], dx: -14, blush: true, blushY: 140 },
+  wink:       { l: [44, 84, 0, 0, 0, 0], wink: true },
+  thinking:   { l: [44, 76, -10, 8, 0, 0], dx: 12, dots: true },
+  confused:   { l: [48, 96, -6, 0, 0, 0], r: [40, 56, 8, 0, 0, -10], question: true },
+  dizzy:      { l: [56, 84, 0, 0, 0, 0], spiral: true },
+  content:    { l: [56, 24, 0, 0, 0, 0], arc: "up" },
+  vibing:     { l: [52, 20, 0, 0, 0, 0], arc: "down", notes: true },
+  cool:       { l: [68, 44, 0, 0, 0, 0], shades: true },
+  ko:         { l: [52, 44, 8, 0, 0, 0], cross: true, orbit: true },
+  sweat:      { l: [56, 24, 0, 0, 0, 0], arc: "up", drop: true },
+  money:      { l: [60, 84, 0, 0, 0, 0], dollar: true },
+  touched:    { l: [60, 92, 0, 0, 0, -10], glossy: true },
+  starstruck: { l: [60, 96, -4, 0, 0, 0], star: true },
 };
+const DOLLAR = [0b00100, 0b01111, 0b10100, 0b01110, 0b00101, 0b11110, 0b00100];
+const STAR = [0b0001000, 0b0001000, 0b0011100, 0b1111111, 0b0111110, 0b0110110, 0b1100011];
+const SPIRAL = [0b1111111, 0b1000000, 0b1011111, 0b1010001, 0b1011101, 0b1000001, 0b1111111];
+const QUESTION = [0b01110, 0b10001, 0b00001, 0b00110, 0b00100, 0b00000, 0b00100];
+const NOTE = [0b00111, 0b00101, 0b00100, 0b11100, 0b11100];
+const DROP = [0b010, 0b111, 0b111, 0b010];
+const PLUS = [0b010, 0b111, 0b010];
 const HEART = [0b0110110, 0b1111111, 0b1111111, 0b0111110, 0b0011100, 0b0001000];
 const ZED = [0b11111, 0b00010, 0b00100, 0b01000, 0b11111];
 const G = 4;
@@ -463,11 +484,37 @@ function drawFace(canvas, id, bg, eye) {
   ctx.fillRect(0, 0, 320, 172);
   const eyeColor = shape.angry ? (a.angry || "#a80010") : eye;
   [[86, shape.l, 1], [234, shape.r || shape.l, -1]].forEach(([restX, s, inner]) => {
-    const [w, h, dy, top, bot, slant] = s;
+    const winking = shape.wink && inner < 0;
+    const [w, h, dy, top, bot, slant] = winking ? [52, 56, 4, 0, 0, 0] : s;
     const x0 = restX - w / 2 + (shape.dx || 0);
     const cy = 86 + dy;
     ctx.fillStyle = eyeColor;
-    if (shape.chevron) {
+    if (shape.shades) {
+      const y = cy - h / 2;
+      ctx.fillRect(0, y, 320, 8);
+      ctx.fillRect(x0, y, w, h - 8);
+      ctx.fillRect(x0 + 4, y + h - 8, w - 8, 4);
+      ctx.fillRect(x0 + 8, y + h - 4, w - 16, 4);
+      ctx.fillStyle = a.sparkle || "#fff4d6";
+      for (let j = 0; j < 3; j++) ctx.fillRect(x0 + 20 - j * G, y + 8 + j * G, 8, G);
+      return;
+    }
+    if (shape.cross) {
+      for (let j = 0; j < 11; j++) {
+        ctx.fillRect(x0 + j * G, cy - 22 + j * G, 12, G);
+        ctx.fillRect(x0 + (10 - j) * G, cy - 22 + j * G, 12, G);
+      }
+      return;
+    }
+    if (shape.arc) {
+      const thick = G * 4, cols = w / G, y0 = snap(cy - (h + thick) / 2);
+      for (let i = 0; i < cols; i++) {
+        const u = (i + .5) / cols - .5, off = snap(4 * u * u * h);
+        ctx.fillRect(x0 + i * G, shape.arc === "up" ? y0 + off : y0 + snap(h) - off, G, thick);
+      }
+      return;
+    }
+    if (shape.chevron || winking) {
       const thick = G * 5, span = w - thick, rows = h / G;
       for (let j = 0; j < rows; j++) {
         const v = (j + .5) / rows;
@@ -488,12 +535,48 @@ function drawFace(canvas, id, bg, eye) {
       ctx.fillRect(x0 + 8, cy - h / 2 + 12, 16, 16);
       ctx.fillRect(x0 + w - 20, cy + h / 2 - 28, 8, 8);
     }
+    if (shape.dollar) blocks(ctx, DOLLAR, 5, x0 + w / 2, cy, 4, a.money || "#8cf5a0");
+    if (shape.star) blocks(ctx, STAR, 7, x0 + w / 2, cy, 4, a.sparkle || "#fff4d6");
+    if (shape.spiral) blocks(ctx, SPIRAL, 7, x0 + w / 2, cy, 4, a.sparkle || "#fff4d6");
+    if (shape.glossy) {
+      ctx.fillStyle = a.sparkle || "#fff4d6";
+      ctx.fillRect(x0 + 8, cy - h / 2 + 16, 16, 16);
+      ctx.fillRect(x0 + w - 24, cy - h / 2 + 40, 8, 8);
+      ctx.fillRect(x0 + 4, cy + h / 2 - 12, w - 8, 8);
+    }
   });
+  const sparkle = a.sparkle || "#fff4d6";
+  if (shape.wink) blocks(ctx, PLUS, 3, 294, 44, 4, sparkle);
+  if (shape.dots) {
+    ctx.fillStyle = "#ffffff";
+    for (let i = 0; i < 3; i++) ctx.fillRect(280 + i * 14, 20, 8, 8);
+  }
+  if (shape.question) blocks(ctx, QUESTION, 5, 160, 42, 4, "#ffffff");
+  if (shape.notes) {
+    blocks(ctx, NOTE, 5, 26, 60, 3, "#ffffff");
+    blocks(ctx, NOTE, 5, 160, 120, 3, "#ffffff");
+    blocks(ctx, NOTE, 5, 296, 96, 3, "#ffffff");
+  }
+  if (shape.drop) blocks(ctx, DROP, 3, 292, 44, 4, sparkle);
+  if (shape.orbit) {
+    blocks(ctx, PLUS, 3, 104, 28, 4, sparkle);
+    blocks(ctx, PLUS, 3, 216, 28, 4, sparkle);
+    blocks(ctx, [1], 1, 160, 20, 4, sparkle);
+  }
+  if (shape.dollar) {
+    blocks(ctx, DOLLAR, 5, 160, 44, 2, a.money || "#8cf5a0");
+    blocks(ctx, DOLLAR, 5, 298, 116, 2, a.money || "#8cf5a0");
+  }
+  if (shape.star) {
+    blocks(ctx, PLUS, 3, 160, 50, 4, sparkle);
+    blocks(ctx, PLUS, 3, 24, 120, 4, sparkle);
+    blocks(ctx, [1], 1, 298, 56, 4, sparkle);
+  }
   if (shape.blush) {
     ctx.fillStyle = a.blush || "#ffa0a0";
     for (let k = 0; k < 3; k++) {
-      ctx.fillRect(50 + k * 14, 130, 8, 8);
-      ctx.fillRect(262 - k * 14, 130, 8, 8);
+      ctx.fillRect(50 + k * 14, shape.blushY || 130, 8, 8);
+      ctx.fillRect(262 - k * 14, shape.blushY || 130, 8, 8);
     }
   }
   if (shape.heart) {

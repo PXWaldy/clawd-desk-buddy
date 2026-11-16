@@ -85,15 +85,18 @@ void animationTask(void*) {
 }
 
 // The serial port carries Improv packets (WiFi setup from the web flasher)
-// and a small console for testing: 0-9 selects an expression, r switches
-// random mode on, t simulates a tap.
+// and a small console for testing: 0-9 and A-N select an expression, r
+// switches random mode on, t simulates a tap.
 void handleSerial() {
     while (Serial.available()) {
         const int ch = Serial.read();
         if (improv::handleByte((uint8_t)ch)) continue;
-        if (ch >= '0' && ch <= '9') {
-            behavior::post(behavior::EventType::SetExpression, ch - '0');
-            Serial.printf("Expression: %s\n", expressionName((Expression)(ch - '0')));
+        int index = -1;
+        if (ch >= '0' && ch <= '9') index = ch - '0';
+        else if (ch >= 'A' && ch < 'A' + EXPRESSION_COUNT - 10) index = 10 + ch - 'A';
+        if (index >= 0) {
+            behavior::post(behavior::EventType::SetExpression, index);
+            Serial.printf("Expression: %s\n", expressionName((Expression)index));
         } else if (ch == 'r') {
             behavior::post(behavior::EventType::SetRandom, 1);
             Serial.println("Random mode on");

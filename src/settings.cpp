@@ -45,7 +45,7 @@ void write(const Settings& s) {
     prefs.putUInt("eye", s.colorEye);
     prefs.putUChar("bright", s.brightness);
     prefs.putBool("dispOn", s.displayOn);
-    prefs.putUShort("enabled", s.enabledMask);
+    prefs.putUInt("enabled32", s.enabledMask);
     prefs.putBool("random", s.randomMode);
     prefs.putUShort("interval", s.randomIntervalS);
     prefs.putBool("sleepOn", s.sleepEnabled);
@@ -79,7 +79,15 @@ void begin() {
     current.colorEye = prefs.getUInt("eye", current.colorEye);
     current.brightness = prefs.getUChar("bright", current.brightness);
     current.displayOn = prefs.getBool("dispOn", current.displayOn);
-    current.enabledMask = prefs.getUShort("enabled", current.enabledMask) & ALL_EXPRESSIONS_MASK;
+    if (prefs.isKey("enabled32")) {
+        current.enabledMask = prefs.getUInt("enabled32", current.enabledMask) & ALL_EXPRESSIONS_MASK;
+    } else if (prefs.isKey("enabled")) {
+        // Settings of an older firmware with a 16 bit mask: keep the choice
+        // for the old expressions, the ones added since start enabled.
+        const uint32_t old = prefs.getUShort("enabled", (uint16_t)LEGACY_EXPRESSIONS_MASK);
+        current.enabledMask = (old & LEGACY_EXPRESSIONS_MASK) |
+                              (ALL_EXPRESSIONS_MASK & ~LEGACY_EXPRESSIONS_MASK);
+    }
     current.randomMode = prefs.getBool("random", current.randomMode);
     current.randomIntervalS = prefs.getUShort("interval", current.randomIntervalS);
     current.sleepEnabled = prefs.getBool("sleepOn", current.sleepEnabled);

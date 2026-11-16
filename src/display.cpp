@@ -154,6 +154,7 @@ void begin() {
     setPaletteColor(cfg::PAL_SPARKLE, cfg::COLOR_SPARKLE);
     setPaletteColor(cfg::PAL_ANGRY, cfg::COLOR_ANGRY);
     setPaletteColor(cfg::PAL_TEXT, cfg::COLOR_TEXT);
+    setPaletteColor(cfg::PAL_MONEY, cfg::COLOR_MONEY);
     frame.fillScreen(cfg::PAL_BACKGROUND);
 
     shadow = (uint8_t*)malloc(ROW_BYTES * cfg::SCREEN_H);

@@ -11,9 +11,10 @@ it and goes to sleep at night. That is all it does, and that is the point.
 
 ## Features
 
-- Ten eye expressions in a chunky pixel-art style, each with its own idle
+- 24 eye expressions in a chunky pixel-art style, each with its own idle
   animation: Normal, Happy, In love, Excited, Curious, Surprised, Suspicious,
-  Sleepy, Sad and Grumpy
+  Sleepy, Sad, Grumpy, Bored, Shy, Wink, Thinking, Confused, Dizzy, Content,
+  Vibing, Cool, K.O., Sheepish, Money, Touched and Starstruck
 - Smooth transitions between expressions
 - Random mode with an adjustable interval
 - Touch: tap for a happy reaction, tap again to switch to the next expression
@@ -234,8 +235,8 @@ added the same way.
 
 The HTTP API is described in [docs/api.md](docs/api.md).
 
-A serial console at 115200 baud helps while developing: `0` to `9` select an
-expression, `r` switches random mode on, `t` simulates a tap. Note that
+A serial console at 115200 baud helps while developing: `0` to `9` and `A` to
+`N` select an expression, `r` switches random mode on, `t` simulates a tap. Note that
 opening the serial port restarts the board.
 
 ### Releases
